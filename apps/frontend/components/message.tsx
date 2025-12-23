@@ -33,7 +33,7 @@ const PurePreviewMessage = ({
   setMessages,
   regenerate,
   isReadonly,
-  requiresScrollPadding: _requiresScrollPadding,
+  requiresScrollPadding: requiresScrollPadding,
 }: {
   addToolApprovalResponse: UseChatHelpers<ChatMessage>["addToolApprovalResponse"];
   chatId: string;
@@ -361,6 +361,11 @@ const PurePreviewMessage = ({
 export const PreviewMessage = memo(
   PurePreviewMessage,
   (prevProps, nextProps) => {
+    // Always re-render when streaming to ensure text updates are visible
+    if (nextProps.isLoading) {
+      return false; // Force re-render during streaming
+    }
+    
     if (
       prevProps.isLoading === nextProps.isLoading &&
       prevProps.message.id === nextProps.message.id &&

@@ -90,7 +90,7 @@ export function Chat({
   } = useChat<ChatMessage>({
     id,
     messages: initialMessages,
-    experimental_throttle: 100,
+    experimental_throttle: 0,
     generateId: generateUUID,
     // Auto-continue after tool approval (only for APPROVED tools)
     // Denied tools don't need server continuation - state is saved on next user message
@@ -142,29 +142,12 @@ export function Chat({
       },
     }),
     onData: (dataPart) => {
-      // Log finish events for debugging
-      if (dataPart && typeof dataPart === "object" && "type" in dataPart && dataPart.type === "finish") {
-        console.log("[Chat] Finish event received in onData:", JSON.stringify(dataPart, null, 2));
-      }
       setDataStream((ds) => (ds ? [...ds, dataPart] : []));
     },
-    onFinish: ({ finishReason, usage }) => {
-      console.log("[Chat] Stream finished:", { finishReason, usage });
+    onFinish: () => {
       mutate(unstable_serialize(getChatHistoryPaginationKey));
-      // Note: useChat hook automatically updates status to "ready" when stream finishes
-      // If status doesn't update, it might be a bug in the AI SDK or transport
-      // Workaround: Force a small delay to ensure status updates
-      setTimeout(() => {
-        console.log("[Chat] onFinish callback completed, checking status");
-      }, 100);
     },
     onError: (error) => {
-      console.error("[Chat] Error in stream:", error);
-      console.error("[Chat] Error details:", {
-        message: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        name: error instanceof Error ? error.name : undefined,
-      });
       if (error instanceof ChatSDKError) {
         // Check if it's a credit card error
         if (
@@ -177,17 +160,10 @@ export function Chat({
             description: error.message,
           });
         }
-      } else {
-        // Log non-ChatSDKError errors for debugging
-        console.error("[Chat] Non-ChatSDKError:", error);
       }
     },
   });
 
-  // Debug: Log status changes to help diagnose status update issues
-  useEffect(() => {
-    console.log("[Chat] Status changed:", status, { messagesCount: messages.length });
-  }, [status, messages.length]);
 
   const searchParams = useSearchParams();
   const query = searchParams.get("query");

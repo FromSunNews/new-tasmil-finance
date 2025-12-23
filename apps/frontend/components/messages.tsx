@@ -112,6 +112,11 @@ export const Messages = memo(PureMessages, (prevProps, nextProps) => {
     return true;
   }
 
+  // Always re-render when streaming to ensure text updates are visible
+  if (nextProps.status === "streaming") {
+    return false; // Force re-render during streaming
+  }
+
   if (prevProps.status !== nextProps.status) {
     return false;
   }

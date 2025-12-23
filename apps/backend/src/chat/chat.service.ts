@@ -1,5 +1,6 @@
 import { Injectable, HttpException, HttpStatus } from "@nestjs/common";
-import { Observable } from "rxjs";
+import { Observable, asyncScheduler } from "rxjs";
+import { observeOn } from "rxjs/operators";
 import {
   convertToModelMessages,
   createUIMessageStream,
@@ -261,40 +262,52 @@ export class ChatService {
       },
       generateId: generateUUID,
       onFinish: async ({ messages: finishedMessages }) => {
-        if (isToolApprovalFlow) {
-          for (const finishedMsg of finishedMessages) {
-            const existingMsg = uiMessages.find((m) => m.id === finishedMsg.id);
-            if (existingMsg) {
-              await updateMessage({
-                id: finishedMsg.id,
-                parts: finishedMsg.parts,
-              });
-            } else {
-              await saveMessages({
-                messages: [
-                  {
-                    id: finishedMsg.id,
-                    role: finishedMsg.role,
-                    parts: finishedMsg.parts,
-                    createdAt: new Date(),
-                    attachments: [],
-                    chatId: id,
-                  },
-                ],
-              });
+        console.log("[Chat] onFinish called with messages:", finishedMessages.length);
+        try {
+          if (isToolApprovalFlow) {
+            for (const finishedMsg of finishedMessages) {
+              const existingMsg = uiMessages.find((m) => m.id === finishedMsg.id);
+              if (existingMsg) {
+                console.log("[Chat] Updating existing message:", finishedMsg.id);
+                await updateMessage({
+                  id: finishedMsg.id,
+                  parts: finishedMsg.parts,
+                });
+              } else {
+                console.log("[Chat] Saving new message:", finishedMsg.id);
+                await saveMessages({
+                  messages: [
+                    {
+                      id: finishedMsg.id,
+                      role: finishedMsg.role,
+                      parts: finishedMsg.parts,
+                      createdAt: new Date(),
+                      attachments: [],
+                      chatId: id,
+                    },
+                  ],
+                });
+              }
             }
+          } else if (finishedMessages.length > 0) {
+            console.log("[Chat] Saving finished messages:", finishedMessages.length);
+            await saveMessages({
+              messages: finishedMessages.map((currentMessage) => ({
+                id: currentMessage.id,
+                role: currentMessage.role,
+                parts: currentMessage.parts,
+                createdAt: new Date(),
+                attachments: [],
+                chatId: id,
+              })),
+            });
+            console.log("[Chat] Messages saved successfully");
+          } else {
+            console.log("[Chat] No finished messages to save");
           }
-        } else if (finishedMessages.length > 0) {
-          await saveMessages({
-            messages: finishedMessages.map((currentMessage) => ({
-              id: currentMessage.id,
-              role: currentMessage.role,
-              parts: currentMessage.parts,
-              createdAt: new Date(),
-              attachments: [],
-              chatId: id,
-            })),
-          });
+        } catch (error) {
+          console.error("[Chat] Error saving messages in onFinish:", error);
+          throw error;
         }
       },
       onError: (error) => {
@@ -306,8 +319,8 @@ export class ChatService {
     // Convert to Observable for NestJS SSE
     // NestJS @Sse() decorator expects Observable<MessageEvent> where MessageEvent = { data: string }
     // JsonToSseTransformStream outputs "data: {json}\n\n" format
-    // We need to pass the entire SSE-formatted string to NestJS, which will send it as-is
-    return new Observable<{ data: string }>((subscriber) => {
+    // We need to extract the JSON from SSE format and transform finishReason if needed
+    const observable = new Observable<{ data: string }>((subscriber) => {
       const sseStream = stream.pipeThrough(new JsonToSseTransformStream());
       const reader = sseStream.getReader();
       const decoder = new TextDecoder();
@@ -316,81 +329,46 @@ export class ChatService {
 
       const pump = async () => {
         try {
-          console.log("[Chat] Starting to pump SSE stream");
-          let chunkCount = 0;
+          let messageCount = 0;
           while (true) {
             const { done, value } = await reader.read();
             if (done) {
               // Send any remaining buffered data
               if (buffer.trim()) {
-                subscriber.next({ data: buffer.trim() });
+                const jsonData = extractAndTransformJson(buffer.trim());
+                if (jsonData) {
+                  subscriber.next({ data: jsonData });
+                }
               }
-              console.log(`[Chat] Stream done, completing. Total chunks: ${chunkCount}`);
               isCompleted = true;
               await reader.releaseLock();
-              // Ensure completion is properly signaled
               subscriber.complete();
               break;
             }
             if (value) {
-              chunkCount++;
               // Decode chunk
               const chunk = typeof value === "string" ? value : decoder.decode(value, { stream: true });
-              
-              // Accumulate chunks in buffer
               buffer += chunk;
               
-              // Process complete SSE messages (ending with \n\n)
-              const messages = buffer.split("\n\n");
-              // Keep the last incomplete message in buffer
-              buffer = messages.pop() || "";
-              
-              // Send each complete SSE message
-              for (const message of messages) {
-                if (message.trim()) {
-                  // Extract JSON from "data: {json}" format
-                  let jsonData = message.trim();
-                  if (jsonData.startsWith("data: ")) {
-                    jsonData = jsonData.substring(6); // Remove "data: "
-                  }
-                  
-                  // Parse and transform finishReason if needed
-                  // AI SDK expects finishReason to be a string, not an object
-                  try {
-                    const parsed = JSON.parse(jsonData);
-                    if (parsed.type === "finish" && parsed.finishReason) {
-                      // Log original format for debugging
-                      console.log("[Chat] Finish event before transform:", JSON.stringify(parsed, null, 2));
-                      
-                      // Transform finishReason from {unified: "stop"} to "stop"
-                      if (typeof parsed.finishReason === "object" && parsed.finishReason !== null) {
-                        if (parsed.finishReason.unified) {
-                          parsed.finishReason = parsed.finishReason.unified;
-                        } else {
-                          // If it's an object but doesn't have unified, try to get the first value
-                          const values = Object.values(parsed.finishReason);
-                          if (values.length > 0 && typeof values[0] === "string") {
-                            parsed.finishReason = values[0];
-                          }
-                        }
-                        console.log("[Chat] Finish event after transform:", JSON.stringify(parsed, null, 2));
-                      }
-                    }
-                    jsonData = JSON.stringify(parsed);
-                  } catch (parseError) {
-                    // If parsing fails, pass as-is (might not be JSON)
-                    // This can happen with non-JSON SSE messages
-                    console.warn("[Chat] Failed to parse JSON, passing as-is:", jsonData.substring(0, 100));
-                  }
-                  
-                  // NestJS @Sse() will format { data: jsonString } as "data: jsonString\n\n"
-                  subscriber.next({ data: jsonData });
+              // Process complete SSE messages (ending with \n\n) immediately
+              while (true) {
+                const messageEndIndex = buffer.indexOf("\n\n");
+                if (messageEndIndex === -1) {
+                  // No complete message yet, keep buffering
+                  break;
                 }
-              }
-              
-              // Log every 10th chunk to avoid spam
-              if (chunkCount % 10 === 0) {
-                console.log(`[Chat] Processed ${chunkCount} chunks`);
+                
+                // Extract complete message
+                const completeMessage = buffer.substring(0, messageEndIndex);
+                buffer = buffer.substring(messageEndIndex + 2); // Remove message and \n\n
+                
+                if (completeMessage.trim()) {
+                  const jsonData = extractAndTransformJson(completeMessage.trim());
+                  if (jsonData) {
+                    messageCount++;
+                    subscriber.next({ data: jsonData });
+                  }
+                }
               }
             }
           }
@@ -411,7 +389,7 @@ export class ChatService {
 
       void pump();
 
-      // Return cleanup function to properly release resources
+      // Return cleanup function
       return () => {
         if (!isCompleted) {
           isCompleted = true;
@@ -423,6 +401,42 @@ export class ChatService {
         }
       };
     });
+
+    // Helper function to extract JSON from SSE format and transform finishReason
+    function extractAndTransformJson(sseMessage: string): string | null {
+      // Extract JSON from "data: {json}" format
+      let jsonData = sseMessage.trim();
+      if (jsonData.startsWith("data: ")) {
+        jsonData = jsonData.substring(6); // Remove "data: "
+      }
+      
+      // Parse and transform finishReason if needed
+      try {
+        const parsed = JSON.parse(jsonData);
+        if (parsed.type === "finish" && parsed.finishReason) {
+          // Transform finishReason from {unified: "stop"} to "stop"
+          if (typeof parsed.finishReason === "object" && parsed.finishReason !== null) {
+            if (parsed.finishReason.unified) {
+              parsed.finishReason = parsed.finishReason.unified;
+            } else {
+              // If it's an object but doesn't have unified, try to get the first value
+              const values = Object.values(parsed.finishReason as Record<string, unknown>);
+              if (values.length > 0 && typeof values[0] === "string") {
+                parsed.finishReason = values[0];
+              }
+            }
+          }
+        }
+        return JSON.stringify(parsed);
+      } catch {
+        // If parsing fails, return null (invalid JSON)
+        console.warn("[Chat] Failed to parse JSON:", jsonData.substring(0, 100));
+        return null;
+      }
+    }
+    
+    // Use observeOn to ensure messages are sent asynchronously and not buffered
+    return observable.pipe(observeOn(asyncScheduler));
   }
 
   async deleteChat(id: string, userId: string) {
