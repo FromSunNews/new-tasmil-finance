@@ -1,6 +1,7 @@
 {
   "name": "@repo/api",
   "version": "0.0.0",
+  "type": "module",
   "private": true,
   "license": "MIT",
   "scripts": {
@@ -21,13 +22,16 @@
       "import": "./dist/entry.js",
       "require": "./dist/entry.js"
     },
-    "./*": {
-      "import": "./dist/*.js",
-      "require": "./dist/*.js"
+    "./src/*": {
+      "import": "./src/*.js",
+      "require": "./src/*.js"
     }
   },
   "dependencies": {
-    "@nestjs/mapped-types": "*"
+    "@nestjs/mapped-types": "*",
+    "@repo/db": "workspace:*",
+    "ai": "6.0.0-beta.159",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
