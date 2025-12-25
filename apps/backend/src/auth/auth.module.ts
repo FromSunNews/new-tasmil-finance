@@ -5,6 +5,7 @@ import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
 import { JwtStrategy } from "./strategies/jwt.strategy";
 import { LocalStrategy } from "./strategies/local.strategy";
+import { RedisModule } from "../infra/redis/redis.module";
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { LocalStrategy } from "./strategies/local.strategy";
       secret: process.env.AUTH_SECRET || "secret",
       signOptions: { expiresIn: "30d" },
     }),
+    RedisModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, LocalStrategy, JwtStrategy],

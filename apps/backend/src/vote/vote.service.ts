@@ -5,13 +5,17 @@ import { ChatSDKError } from "@repo/api";
 @Injectable()
 export class VoteService {
   async getVotes(chatId: string, userId: string) {
+    // First check if chatId is valid
+    if (!chatId || chatId === 'undefined' || chatId === 'null') {
+      return []; // Return empty array for invalid chatId
+    }
+
     const chat = await getChatById({ id: chatId });
 
     if (!chat) {
-      throw new HttpException(
-        new ChatSDKError("not_found:chat"),
-        HttpStatus.NOT_FOUND
-      );
+      // Instead of throwing error, return empty array for non-existent chat
+      // This prevents 404 errors when frontend queries votes for new chats
+      return [];
     }
 
     if (chat.userId !== userId) {

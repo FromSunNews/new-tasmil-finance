@@ -8,6 +8,7 @@ import {
   UseInterceptors,
   UploadedFile,
 } from "@nestjs/common";
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody } from "@nestjs/swagger";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { Express } from "express";
 import { Request } from "express";
@@ -16,13 +17,31 @@ import { JwtAuthGuard } from "../auth/guards/auth.guard";
 import { ChatSDKError } from "@repo/api";
 import type { JwtPayload } from "../auth/auth.service";
 
-@Controller("api/files")
+@ApiTags("files")
+@ApiBearerAuth("JWT-auth")
+@Controller("files")
 @UseGuards(JwtAuthGuard)
 export class FilesController {
   constructor(private filesService: FilesService) {}
 
   @Post("upload")
   @UseInterceptors(FileInterceptor("file"))
+  @ApiOperation({ summary: "Upload a file" })
+  @ApiConsumes("multipart/form-data")
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        file: {
+          type: "string",
+          format: "binary",
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 201, description: "File uploaded successfully" })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
+  @ApiResponse({ status: 400, description: "Bad request - invalid file" })
   async uploadFile(@UploadedFile() file: Express.Multer.File | undefined, @Req() req: Request) {
     const user = req.user as JwtPayload;
 

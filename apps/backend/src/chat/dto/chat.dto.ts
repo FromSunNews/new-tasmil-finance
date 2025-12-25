@@ -1,7 +1,12 @@
 import { PostChatRequestBody } from "@repo/api";
+import { IsOptional, IsString, IsEthereumAddress, IsNotEmpty } from "class-validator";
 
 export class CreateChatDto implements PostChatRequestBody {
+  @IsNotEmpty()
+  @IsString()
   id!: string;
+  
+  @IsOptional()
   message?: {
     id: string;
     role: "user";
@@ -13,12 +18,29 @@ export class CreateChatDto implements PostChatRequestBody {
       url?: string;
     }>;
   };
+  
+  @IsOptional()
   messages?: Array<{
     id: string;
     role: string;
     parts: any[];
   }>;
+  
+  @IsNotEmpty()
+  @IsString()
   selectedChatModel!: string;
+  
+  @IsNotEmpty()
+  @IsString()
   selectedVisibilityType!: "public" | "private";
+  
+  @IsOptional()
+  @IsString()
+  @IsEthereumAddress()
+  walletAddress?: string;
+
+  @IsOptional()
+  @IsString()
+  agentId?: string;
 }
 

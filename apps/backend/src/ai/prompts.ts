@@ -58,9 +58,11 @@ About the origin of user's request:
 export const systemPrompt = ({
   selectedChatModel,
   requestHints,
+  agentId,
 }: {
   selectedChatModel: string;
   requestHints: RequestHints;
+  agentId?: string;
 }) => {
   const requestPrompt = getRequestPromptFromHints(requestHints);
 
@@ -70,6 +72,12 @@ export const systemPrompt = ({
     selectedChatModel.includes("thinking")
   ) {
     return `${regularPrompt}\n\n${requestPrompt}`;
+  }
+
+  // If agentId is provided, return agent-specific prompt (will be handled by agent)
+  if (agentId) {
+    // Return base prompt - agent will provide its own system prompt
+    return `${regularPrompt}\n\n${requestPrompt}\n\n${artifactsPrompt}`;
   }
 
   return `${regularPrompt}\n\n${requestPrompt}\n\n${artifactsPrompt}`;
@@ -121,6 +129,100 @@ export const updateDocumentPrompt = (
 
 ${currentContent}`;
 };
+
+export const stakingPrompt = `
+You have access to U2U Solaris staking tools that allow you to query staking information and perform staking operations:
+
+**Staking Query Tools:**
+
+1. **getAccountBalance** - Get U2U balance of a wallet
+   Example: "Check my U2U balance" → use address: "my-wallet" or leave empty
+   Example: "What's the balance of 0x123...?" → use address: "0x123..."
+
+2. **getCurrentEpoch** - Get current epoch number
+   Example: "What's the current epoch?", "Show current staking period"
+
+3. **getTotalStake** - Get total stake in the network
+   Example: "What's the total stake?", "Show network staking stats"
+
+4. **getTotalActiveStake** - Get total active stake
+   Example: "What's the total active stake?", "Show active staking"
+
+5. **getValidatorID** - Get validator ID from auth address
+   Example: "What's the validator ID for address 0x123...?"
+
+6. **getValidatorInfo** - Get validator information
+   Example: "Show validator 1 info", "Get details about validator 2"
+
+7. **getSelfStake** - Get validator's self-stake
+   Example: "What's validator 1's self-stake?", "Show self-stake of validator 2"
+
+8. **getStake** - Get delegated stake amount
+   Example: "How much have I staked to validator 1?", "Check my stake on validator 2"
+
+9. **getUnlockedStake** - Get unlocked stake amount
+   Example: "Show my unlocked stake", "What's my available stake for validator 1?"
+
+10. **getPendingRewards** - Get pending rewards
+    Example: "Show my pending rewards", "How much rewards do I have on validator 1?"
+
+11. **getRewardsStash** - Get stashed rewards
+    Example: "Check my stashed rewards", "Show rewards stash for validator 1"
+
+12. **getLockupInfo** - Get lockup information
+    Example: "Show my lockup info", "When does my stake unlock for validator 1?"
+
+13. **getStakingAPR** - Get staking APR for validator and amount
+    Example: "What's the APR for staking 1000 U2U to validator 1?", "Get staking rewards rate"
+
+14. **getValidatorsInfo** - Get comprehensive validators information
+    Example: "Show me all validators", "List all validators with their stats"
+
+15. **getStakingStats** - Get overall network staking statistics
+    Example: "Show network staking statistics", "What's the total staked amount?"
+
+**Staking Operation Tools:**
+
+1. **delegateStake** - Delegate (stake) U2U tokens to a validator
+   Example: "I want to stake 100 U2U to validator 1", "Stake 50 U2U to validator 2"
+
+2. **undelegateStake** - Undelegate (unstake) U2U tokens from a validator
+   Example: "Help me unstake 50 U2U from validator 1", "I want to unstake 100 U2U from validator 2"
+
+3. **claimRewards** - Claim pending rewards from a validator
+   Example: "I want to claim my rewards from validator 1", "Claim rewards from validator 2"
+
+4. **restakeRewards** - Restake (compound) rewards from a validator
+   Example: "Restake my rewards on validator 1", "Restake my rewards on validator 2"
+
+5. **lockStake** - Lock stake for additional rewards
+   Example: "Lock 200 U2U for 30 days on validator 1", "Lock 100 U2U for 14 days on validator 2"
+
+**When to use staking tools:**
+- User asks about staking, delegation, or validators
+- User asks about rewards, epochs, or network statistics
+- User mentions validators, staking, or delegation
+- User asks about their staked amount or rewards
+- User wants to perform staking operations (stake, unstake, claim, etc.)
+
+**Important Notes:**
+- All staking tools work on U2U Solaris network (chain ID 39)
+- Validator IDs should be provided as strings (e.g., "1", "2", "3")
+- For user's own stake, use their wallet address or "my-wallet"
+- Always format large numbers (like stake amounts) in human-readable format
+- Operation tools return action data that requires wallet confirmation - do not execute transactions directly
+
+**Examples:**
+- "What's my stake on validator 1?" → Use getStake with user's address and validatorID: "1"
+- "Show current epoch" → Use getCurrentEpoch
+- "Check my rewards" → Use getPendingRewards with user's address
+- "How much is locked?" → Use getLockupInfo with user's address
+- "What's the APR for 500 U2U on validator 2?" → Use getStakingAPR with validatorID: "2" and amount: "500"
+- "Show all validators" → Use getValidatorsInfo
+- "Network staking stats" → Use getStakingStats
+- "I want to stake 100 U2U to validator 1" → Use delegateStake with validatorID: "1" and amount: "100"
+- "Claim my rewards from validator 1" → Use claimRewards with validatorID: "1"
+`;
 
 export const titlePrompt = `Generate a very short chat title (2-5 words max) based on the user's message.
 Rules:
