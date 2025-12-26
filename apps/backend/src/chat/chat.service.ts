@@ -1,4 +1,4 @@
-import { Injectable, HttpException, HttpStatus } from "@nestjs/common";
+import { Injectable, HttpException, HttpStatus, MessageEvent } from "@nestjs/common";
 import { Observable, asyncScheduler } from "rxjs";
 import { observeOn } from "rxjs/operators";
 import {
@@ -41,6 +41,7 @@ import { ToolsService } from "../ai/tools/tools.service";
 import { systemPrompt, titlePrompt } from "../ai/prompts";
 import { entitlementsByUserType, type UserType } from "../ai/entitlements";
 import type { JwtPayload } from "../auth/auth.service";
+import { AgentRegistryService } from "../agents/agent-registry.service";
 
 @Injectable()
 export class ChatService {
@@ -48,7 +49,8 @@ export class ChatService {
 
   constructor(
     private aiService: AiService,
-    private toolsService: ToolsService
+    private toolsService: ToolsService,
+    private agentRegistry: AgentRegistryService
   ) {
     this.initStreamContext();
   }
@@ -105,6 +107,8 @@ export class ChatService {
       messages?: ChatMessage[];
       selectedChatModel: string;
       selectedVisibilityType: "public" | "private";
+      walletAddress?: string;
+      agentId?: string;
     },
     user: JwtPayload,
     requestHints: {
@@ -114,7 +118,7 @@ export class ChatService {
       country: string | null;
     }
   ): Promise<Observable<{ data: string }>> {
-    const { id, message, messages, selectedChatModel, selectedVisibilityType } =
+    const { id, message, messages, selectedChatModel, selectedVisibilityType, walletAddress, agentId } =
       dto;
 
     const userType: UserType = user.type as UserType;
@@ -148,14 +152,31 @@ export class ChatService {
         messagesFromDb = await getMessagesByChatId({ id });
       }
     } else if (message?.role === "user") {
+      // Only create chat if we have a user message
       await saveChat({
         id,
         userId: user.id,
         title: "New chat",
         visibility: selectedVisibilityType,
+        agentId: agentId || undefined,
       });
 
+      // Verify chat was created successfully
+      const createdChat = await getChatById({ id });
+      if (!createdChat) {
+        throw new HttpException(
+          new ChatSDKError("bad_request:database", "Failed to create chat"),
+          HttpStatus.INTERNAL_SERVER_ERROR
+        );
+      }
+
       titlePromise = this.generateTitleFromUserMessage(message);
+    } else {
+      // No chat exists and no message provided - this shouldn't happen
+      throw new HttpException(
+        new ChatSDKError("bad_request:chat", "Cannot create chat without a message"),
+        HttpStatus.BAD_REQUEST
+      );
     }
 
     const uiMessages = isToolApprovalFlow
@@ -163,13 +184,19 @@ export class ChatService {
       : [...this.convertToUIMessages(messagesFromDb), message as ChatMessage];
 
     if (message?.role === "user") {
+      if (!message.id || !message.parts) {
+        throw new HttpException(
+          new ChatSDKError("bad_request:api", "Message must have id and parts"),
+          HttpStatus.BAD_REQUEST
+        );
+      }
       await saveMessages({
         messages: [
           {
             chatId: id,
             id: message.id,
             role: "user",
-            parts: message.parts,
+            parts: message.parts || [],
             attachments: [],
             createdAt: new Date(),
           },
@@ -189,8 +216,8 @@ export class ChatService {
       execute: async ({ writer: dataStream }) => {
         try {
           if (titlePromise) {
-            void titlePromise.then((title) => {
-              updateChatTitleById({ chatId: id, title });
+            void titlePromise.then(async (title) => {
+              await updateChatTitleById({ chatId: id, title });
               dataStream.write({ type: "data-chat-title", data: title });
             }).catch((error) => {
               console.error("Error generating title:", error);
@@ -203,23 +230,61 @@ export class ChatService {
 
           console.log(`[Chat] Starting stream for model: ${selectedChatModel}`);
           console.log(`[Chat] Messages count: ${uiMessages.length}`);
+          if (agentId) {
+            console.log(`[Chat] Using agent: ${agentId}`);
+          }
 
           const model = this.aiService.getLanguageModel(selectedChatModel);
           console.log(`[Chat] Model obtained:`, model?.modelId || "unknown");
 
-          const result = streamText({
-            model,
-            system: systemPrompt({ selectedChatModel, requestHints }),
-            messages: await convertToModelMessages(uiMessages),
-            stopWhen: stepCountIs(5),
-            experimental_activeTools: isReasoningModel
+          // Get tools and system prompt based on agentId
+          let tools: Record<string, any>;
+          let systemPromptText: string;
+          let activeTools: string[];
+
+          if (agentId) {
+            const agent = this.agentRegistry.getAgent(agentId);
+            if (!agent) {
+              throw new HttpException(
+                new ChatSDKError("not_found:agent"),
+                HttpStatus.NOT_FOUND
+              );
+            }
+
+            // Get tools from agent (already filtered)
+            tools = agent.getTools(user, walletAddress, dataStream);
+            // Combine agent-specific prompt with base prompt
+            const basePrompt = systemPrompt({ selectedChatModel, requestHints, agentId });
+            systemPromptText = `${basePrompt}\n\n${agent.getSystemPrompt()}`;
+            activeTools = isReasoningModel ? [] : Object.keys(tools);
+          } else {
+            // Default tools (current implementation)
+            tools = {
+              getWeather: this.toolsService.getWeather(),
+              createDocument: this.toolsService.createDocument(user, dataStream),
+              updateDocument: this.toolsService.updateDocument(user, dataStream),
+              requestSuggestions: this.toolsService.requestSuggestions(
+                user,
+                dataStream
+              ),
+            };
+            systemPromptText = systemPrompt({ selectedChatModel, requestHints });
+            activeTools = isReasoningModel
               ? []
               : [
                   "getWeather",
                   "createDocument",
                   "updateDocument",
                   "requestSuggestions",
-                ],
+                ];
+          }
+
+          const result = streamText({
+            model,
+            system: systemPromptText,
+            messages: await convertToModelMessages(uiMessages),
+            stopWhen: stepCountIs(5),
+            experimental_activeTools: activeTools,
             experimental_transform: isReasoningModel
               ? undefined
               : smoothStream({ chunking: "word" }),
@@ -230,15 +295,7 @@ export class ChatService {
                   },
                 }
               : undefined,
-            tools: {
-              getWeather: this.toolsService.getWeather(),
-              createDocument: this.toolsService.createDocument(user, dataStream),
-              updateDocument: this.toolsService.updateDocument(user, dataStream),
-              requestSuggestions: this.toolsService.requestSuggestions(
-                user,
-                dataStream
-              ),
-            },
+            tools: tools,
             experimental_telemetry: {
               isEnabled: process.env.NODE_ENV === "production",
               functionId: "stream-text",
@@ -308,16 +365,20 @@ export class ChatService {
             }
           } else if (finishedMessages.length > 0) {
             console.log("[Chat] Saving finished messages:", finishedMessages.length);
-            await saveMessages({
-              messages: finishedMessages.map((currentMessage) => ({
+            const messagesToSave = finishedMessages
+              .filter((msg) => msg.id && msg.role && msg.parts)
+              .map((currentMessage) => ({
                 id: currentMessage.id,
                 role: currentMessage.role,
-                parts: currentMessage.parts,
+                parts: currentMessage.parts || [],
                 createdAt: new Date(),
                 attachments: [],
                 chatId: id,
-              })),
-            });
+              }));
+            
+            if (messagesToSave.length > 0) {
+              await saveMessages({ messages: messagesToSave });
+            }
             console.log("[Chat] Messages saved successfully");
             if (usage) {
               console.log("[Chat] Usage:", usage);

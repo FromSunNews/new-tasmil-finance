@@ -1,4 +1,4 @@
-export type UserType = "guest" | "regular";
+export type UserType = "guest" | "regular" | "wallet";
 
 type Entitlements = {
   maxMessagesPerDay: number;
@@ -20,7 +20,10 @@ export const entitlementsByUserType: Record<UserType, Entitlements> = {
   },
 
   /*
-   * TODO: For users with an account and a paid membership
+   * For users with wallet authentication
    */
+  wallet: {
+    maxMessagesPerDay: 100,
+  },
 };
 
