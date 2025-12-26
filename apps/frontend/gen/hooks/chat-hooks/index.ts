@@ -5,6 +5,8 @@ export type { ChatControllerGetChatSuspenseQueryKey } from './use-chat-controlle
 export type { ChatControllerGetChatQueryKey } from './use-chat-controller-get-chat.ts';
 export type { ChatControllerGetStreamSuspenseQueryKey } from './use-chat-controller-get-stream-suspense.ts';
 export type { ChatControllerGetStreamQueryKey } from './use-chat-controller-get-stream.ts';
+export type { ChatControllerTestSseSuspenseQueryKey } from './use-chat-controller-test-sse-suspense.ts';
+export type { ChatControllerTestSseQueryKey } from './use-chat-controller-test-sse.ts';
 export type { ChatControllerUpdateChatVisibilityMutationKey } from './use-chat-controller-update-chat-visibility.ts';
 export { chatControllerCreateChatMutationKey } from './use-chat-controller-create-chat.ts';
 export { chatControllerCreateChatMutationOptions } from './use-chat-controller-create-chat.ts';
@@ -27,6 +29,12 @@ export { useChatControllerGetStreamSuspense } from './use-chat-controller-get-st
 export { chatControllerGetStreamQueryKey } from './use-chat-controller-get-stream.ts';
 export { chatControllerGetStreamQueryOptions } from './use-chat-controller-get-stream.ts';
 export { useChatControllerGetStream } from './use-chat-controller-get-stream.ts';
+export { chatControllerTestSseSuspenseQueryKey } from './use-chat-controller-test-sse-suspense.ts';
+export { chatControllerTestSseSuspenseQueryOptions } from './use-chat-controller-test-sse-suspense.ts';
+export { useChatControllerTestSseSuspense } from './use-chat-controller-test-sse-suspense.ts';
+export { chatControllerTestSseQueryKey } from './use-chat-controller-test-sse.ts';
+export { chatControllerTestSseQueryOptions } from './use-chat-controller-test-sse.ts';
+export { useChatControllerTestSse } from './use-chat-controller-test-sse.ts';
 export { chatControllerUpdateChatVisibilityMutationKey } from './use-chat-controller-update-chat-visibility.ts';
 export { chatControllerUpdateChatVisibilityMutationOptions } from './use-chat-controller-update-chat-visibility.ts';
 export { useChatControllerUpdateChatVisibility } from './use-chat-controller-update-chat-visibility.ts';

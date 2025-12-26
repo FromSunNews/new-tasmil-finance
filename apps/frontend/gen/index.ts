@@ -18,6 +18,8 @@ export type { ChatControllerGetChatSuspenseQueryKey } from './hooks/chat-hooks/u
 export type { ChatControllerGetChatQueryKey } from './hooks/chat-hooks/use-chat-controller-get-chat.ts';
 export type { ChatControllerGetStreamSuspenseQueryKey } from './hooks/chat-hooks/use-chat-controller-get-stream-suspense.ts';
 export type { ChatControllerGetStreamQueryKey } from './hooks/chat-hooks/use-chat-controller-get-stream.ts';
+export type { ChatControllerTestSseSuspenseQueryKey } from './hooks/chat-hooks/use-chat-controller-test-sse-suspense.ts';
+export type { ChatControllerTestSseQueryKey } from './hooks/chat-hooks/use-chat-controller-test-sse.ts';
 export type { ChatControllerUpdateChatVisibilityMutationKey } from './hooks/chat-hooks/use-chat-controller-update-chat-visibility.ts';
 export type { DocumentControllerCreateDocumentMutationKey } from './hooks/document-hooks/use-document-controller-create-document.ts';
 export type { DocumentControllerDeleteDocumentMutationKey } from './hooks/document-hooks/use-document-controller-delete-document.ts';
@@ -135,6 +137,11 @@ export type {
   ChatControllerGetStreamQueryResponse,
   ChatControllerGetStreamQuery,
 } from './types/chat-controller-get-stream.ts';
+export type {
+  ChatControllerTestSse200,
+  ChatControllerTestSseQueryResponse,
+  ChatControllerTestSseQuery,
+} from './types/chat-controller-test-sse.ts';
 export type {
   ChatControllerUpdateChatVisibilityPathParams,
   ChatControllerUpdateChatVisibility200,
@@ -266,6 +273,7 @@ export { chatControllerDeleteChat } from './client/chat-controller-delete-chat.t
 export { chatControllerDeleteTrailingMessages } from './client/chat-controller-delete-trailing-messages.ts';
 export { chatControllerGetChat } from './client/chat-controller-get-chat.ts';
 export { chatControllerGetStream } from './client/chat-controller-get-stream.ts';
+export { chatControllerTestSse } from './client/chat-controller-test-sse.ts';
 export { chatControllerUpdateChatVisibility } from './client/chat-controller-update-chat-visibility.ts';
 export { documentControllerCreateDocument } from './client/document-controller-create-document.ts';
 export { documentControllerDeleteDocument } from './client/document-controller-delete-document.ts';
@@ -341,6 +349,12 @@ export { useChatControllerGetStreamSuspense } from './hooks/chat-hooks/use-chat-
 export { chatControllerGetStreamQueryKey } from './hooks/chat-hooks/use-chat-controller-get-stream.ts';
 export { chatControllerGetStreamQueryOptions } from './hooks/chat-hooks/use-chat-controller-get-stream.ts';
 export { useChatControllerGetStream } from './hooks/chat-hooks/use-chat-controller-get-stream.ts';
+export { chatControllerTestSseSuspenseQueryKey } from './hooks/chat-hooks/use-chat-controller-test-sse-suspense.ts';
+export { chatControllerTestSseSuspenseQueryOptions } from './hooks/chat-hooks/use-chat-controller-test-sse-suspense.ts';
+export { useChatControllerTestSseSuspense } from './hooks/chat-hooks/use-chat-controller-test-sse-suspense.ts';
+export { chatControllerTestSseQueryKey } from './hooks/chat-hooks/use-chat-controller-test-sse.ts';
+export { chatControllerTestSseQueryOptions } from './hooks/chat-hooks/use-chat-controller-test-sse.ts';
+export { useChatControllerTestSse } from './hooks/chat-hooks/use-chat-controller-test-sse.ts';
 export { chatControllerUpdateChatVisibilityMutationKey } from './hooks/chat-hooks/use-chat-controller-update-chat-visibility.ts';
 export { chatControllerUpdateChatVisibilityMutationOptions } from './hooks/chat-hooks/use-chat-controller-update-chat-visibility.ts';
 export { useChatControllerUpdateChatVisibility } from './hooks/chat-hooks/use-chat-controller-update-chat-visibility.ts';

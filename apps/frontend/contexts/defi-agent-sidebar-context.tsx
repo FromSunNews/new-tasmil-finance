@@ -50,5 +50,7 @@ export function DefiAgentSidebarProvider({
 
 export function useDefiAgentSidebar() {
   const context = useContext(DefiAgentSidebarContext);
+  // Return null instead of throwing error when no provider
+  // This allows the hook to be used in components outside the provider
   return context;
 }

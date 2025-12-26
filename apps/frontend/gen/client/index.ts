@@ -12,6 +12,7 @@ export { chatControllerDeleteChat } from './chat-controller-delete-chat.ts';
 export { chatControllerDeleteTrailingMessages } from './chat-controller-delete-trailing-messages.ts';
 export { chatControllerGetChat } from './chat-controller-get-chat.ts';
 export { chatControllerGetStream } from './chat-controller-get-stream.ts';
+export { chatControllerTestSse } from './chat-controller-test-sse.ts';
 export { chatControllerUpdateChatVisibility } from './chat-controller-update-chat-visibility.ts';
 export { documentControllerCreateDocument } from './document-controller-create-document.ts';
 export { documentControllerDeleteDocument } from './document-controller-delete-document.ts';

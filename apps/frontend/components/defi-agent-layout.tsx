@@ -24,10 +24,6 @@ export function DefiAgentLayout({ children, user: _user }: DefiAgentLayoutProps)
   // Get user from wallet context instead of prop
   const { user: walletUser, isAuthenticated } = useWallet();
   
-  // Debug logging
-  console.log('[DefiAgentLayout] Wallet user:', walletUser);
-  console.log('[DefiAgentLayout] Is authenticated:', isAuthenticated);
-  
   // Convert wallet user to NextAuth User format for compatibility
   const user = isAuthenticated && walletUser ? {
     id: walletUser.id,
@@ -35,8 +31,6 @@ export function DefiAgentLayout({ children, user: _user }: DefiAgentLayoutProps)
     name: walletUser.walletAddress || undefined,
     image: undefined,
   } as User : undefined;
-  
-  console.log('[DefiAgentLayout] Converted user:', user);
   
   // Only show DefiAgentHeader for chat routes, not for /agents list page
   const isAgentsListPage = pathname === "/agents" || pathname === "/agents/";

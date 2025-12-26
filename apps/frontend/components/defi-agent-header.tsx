@@ -31,17 +31,10 @@ export function DefiAgentHeader({ className }: DefiAgentHeaderProps) {
   const { data: chatData, error, mutate } = useSWR(
     chatId && chatId !== "agents" ? `chat-${chatId}` : null,
     async () => {
-      console.log('[DefiAgentHeader] Fetching chat:', chatId);
-      try {
-        const result = await chatControllerGetChat(chatId!, { 
-          client: withAuth.client.client 
-        });
-        console.log('[DefiAgentHeader] Chat data received:', result);
-        return result;
-      } catch (err) {
-        console.error('[DefiAgentHeader] Error fetching chat:', err);
-        throw err;
-      }
+      const result = await chatControllerGetChat(chatId!, { 
+        client: withAuth.client.client 
+      });
+      return result;
     },
     {
       revalidateOnFocus: false,

@@ -93,6 +93,11 @@ export type {
   ChatControllerGetStreamQuery,
 } from './chat-controller-get-stream.ts';
 export type {
+  ChatControllerTestSse200,
+  ChatControllerTestSseQueryResponse,
+  ChatControllerTestSseQuery,
+} from './chat-controller-test-sse.ts';
+export type {
   ChatControllerUpdateChatVisibilityPathParams,
   ChatControllerUpdateChatVisibility200,
   ChatControllerUpdateChatVisibility401,

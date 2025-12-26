@@ -18,6 +18,8 @@ export type { ChatControllerGetChatSuspenseQueryKey } from './chat-hooks/use-cha
 export type { ChatControllerGetChatQueryKey } from './chat-hooks/use-chat-controller-get-chat.ts';
 export type { ChatControllerGetStreamSuspenseQueryKey } from './chat-hooks/use-chat-controller-get-stream-suspense.ts';
 export type { ChatControllerGetStreamQueryKey } from './chat-hooks/use-chat-controller-get-stream.ts';
+export type { ChatControllerTestSseSuspenseQueryKey } from './chat-hooks/use-chat-controller-test-sse-suspense.ts';
+export type { ChatControllerTestSseQueryKey } from './chat-hooks/use-chat-controller-test-sse.ts';
 export type { ChatControllerUpdateChatVisibilityMutationKey } from './chat-hooks/use-chat-controller-update-chat-visibility.ts';
 export type { DocumentControllerCreateDocumentMutationKey } from './document-hooks/use-document-controller-create-document.ts';
 export type { DocumentControllerDeleteDocumentMutationKey } from './document-hooks/use-document-controller-delete-document.ts';
@@ -101,6 +103,12 @@ export { useChatControllerGetStreamSuspense } from './chat-hooks/use-chat-contro
 export { chatControllerGetStreamQueryKey } from './chat-hooks/use-chat-controller-get-stream.ts';
 export { chatControllerGetStreamQueryOptions } from './chat-hooks/use-chat-controller-get-stream.ts';
 export { useChatControllerGetStream } from './chat-hooks/use-chat-controller-get-stream.ts';
+export { chatControllerTestSseSuspenseQueryKey } from './chat-hooks/use-chat-controller-test-sse-suspense.ts';
+export { chatControllerTestSseSuspenseQueryOptions } from './chat-hooks/use-chat-controller-test-sse-suspense.ts';
+export { useChatControllerTestSseSuspense } from './chat-hooks/use-chat-controller-test-sse-suspense.ts';
+export { chatControllerTestSseQueryKey } from './chat-hooks/use-chat-controller-test-sse.ts';
+export { chatControllerTestSseQueryOptions } from './chat-hooks/use-chat-controller-test-sse.ts';
+export { useChatControllerTestSse } from './chat-hooks/use-chat-controller-test-sse.ts';
 export { chatControllerUpdateChatVisibilityMutationKey } from './chat-hooks/use-chat-controller-update-chat-visibility.ts';
 export { chatControllerUpdateChatVisibilityMutationOptions } from './chat-hooks/use-chat-controller-update-chat-visibility.ts';
 export { useChatControllerUpdateChatVisibility } from './chat-hooks/use-chat-controller-update-chat-visibility.ts';
