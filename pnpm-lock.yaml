@@ -638,6 +638,19 @@ importers:
         specifier: 5.3.9
         version: 5.3.9(@types/node@22.19.0)(tsx@4.21.0)(typescript@5.8.2)
 
+  apps/mcp:
+    dependencies:
+      viem:
+        specifier: ^2.21.54
+        version: 2.43.3(typescript@5.5.4)
+    devDependencies:
+      '@repo/typescript-config':
+        specifier: workspace:*
+        version: link:../../packages/typescript-config
+      typescript:
+        specifier: 5.5.4
+        version: 5.5.4
+
   packages/api:
     dependencies:
       '@nestjs/mapped-types':
@@ -19772,7 +19785,7 @@ packages:
   /typescript@5.5.4:
     resolution: {integrity: sha512-Mtq29sKDAEYP7aljRgtPOpTvOfbwRWlS6dPRzwjdE+C0R4brX/GUyhHSecbHMFLNBLcJIPt9nl9yG5TZ1weH+Q==}
     engines: {node: '>=14.17'}
-    dev: true
+    hasBin: true
 
   /typescript@5.8.2:
     resolution: {integrity: sha512-aJn6wq13/afZp/jT9QZmwEjDqqvSGp1VT5GVg+f/t6/oVyrgXM6BY1h9BRh/O5p3PlUPAe+WuiEZOmb/49RqoQ==}
