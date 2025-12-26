@@ -1,0 +1,62 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+.venv/
+env/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# LangSmith
+.langchain.db
+.langsmith/
+
+# Logs
+*.log
+
+# Env
+.env
+
+# output
+exampels/logs/
+exampels/output/
+examples/output/sandbox_test
+
+.langchain.db
+.langsmith/
+.langsmith.db
+.langsmith.db-shm
+.langsmith.db-wal
+
+# me
+local_test/
+9b5ad71b2ce5302211f9c61530b329a4922fc6a4
