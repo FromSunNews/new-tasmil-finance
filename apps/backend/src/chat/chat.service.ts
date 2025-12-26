@@ -158,6 +158,7 @@ export class ChatService {
         userId: user.id,
         title: "New chat",
         visibility: selectedVisibilityType,
+        agentId: agentId || undefined,
       });
 
       // Verify chat was created successfully
@@ -215,8 +216,8 @@ export class ChatService {
       execute: async ({ writer: dataStream }) => {
         try {
           if (titlePromise) {
-            void titlePromise.then((title) => {
-              updateChatTitleById({ chatId: id, title });
+            void titlePromise.then(async (title) => {
+              await updateChatTitleById({ chatId: id, title });
               dataStream.write({ type: "data-chat-title", data: title });
             }).catch((error) => {
               console.error("Error generating title:", error);

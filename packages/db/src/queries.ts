@@ -7,6 +7,7 @@ import {
   gt,
   gte,
   inArray,
+  isNull,
   lt,
   type SQL,
 } from "drizzle-orm";
@@ -68,11 +69,13 @@ export async function saveChat({
   userId,
   title,
   visibility,
+  agentId,
 }: {
   id: string;
   userId: string;
   title: string;
   visibility: VisibilityType;
+  agentId?: string;
 }) {
   const db = getDb();
   return await db.insert(chat).values({
@@ -81,6 +84,7 @@ export async function saveChat({
     userId,
     title,
     visibility,
+    agentId: agentId || null,
   });
 }
 
@@ -127,26 +131,42 @@ export async function getChatsByUserId({
   limit,
   startingAfter,
   endingBefore,
+  agentId,
 }: {
   id: string;
   limit: number;
   startingAfter: string | null;
   endingBefore: string | null;
+  agentId?: string | null;
 }) {
   const db = getDb();
   const extendedLimit = limit + 1;
 
-  const query = (whereCondition?: SQL<any>) =>
-    db
+  const query = (whereCondition?: SQL<any>) => {
+    const conditions = [eq(chat.userId, id)];
+    
+    // Filter by agentId if provided
+    if (agentId !== undefined) {
+      if (agentId === null) {
+        // Filter for chats without agentId
+        conditions.push(isNull(chat.agentId));
+      } else {
+        // Filter for specific agentId
+        conditions.push(eq(chat.agentId, agentId));
+      }
+    }
+    
+    return db
       .select()
       .from(chat)
       .where(
         whereCondition
-          ? and(whereCondition, eq(chat.userId, id))
-          : eq(chat.userId, id)
+          ? and(whereCondition, ...conditions)
+          : and(...conditions)
       )
       .orderBy(desc(chat.createdAt))
       .limit(extendedLimit);
+  };
 
   let filteredChats: Chat[] = [];
 

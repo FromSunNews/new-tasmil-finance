@@ -30,6 +30,7 @@ export class HistoryController {
   @ApiQuery({ name: "limit", required: false, type: Number })
   @ApiQuery({ name: "starting_after", required: false, type: String })
   @ApiQuery({ name: "ending_before", required: false, type: String })
+  @ApiQuery({ name: "agentId", required: false, type: String })
   @ApiResponse({ status: 200, description: "History retrieved" })
   @ApiResponse({ status: 401, description: "Unauthorized" })
   @ApiResponse({ status: 400, description: "Bad request" })
@@ -37,6 +38,7 @@ export class HistoryController {
     @Query("limit") limit: string,
     @Query("starting_after") startingAfter: string | null,
     @Query("ending_before") endingBefore: string | null,
+    @Query("agentId") agentId: string | undefined,
     @Req() req: Request
   ) {
     if (startingAfter && endingBefore) {
@@ -49,7 +51,8 @@ export class HistoryController {
       this.getUser(req).id,
       Number.parseInt(limit || "10", 10),
       startingAfter,
-      endingBefore
+      endingBefore,
+      agentId || undefined
     );
   }
 
