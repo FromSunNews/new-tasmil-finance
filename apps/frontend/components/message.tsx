@@ -22,6 +22,8 @@ import { MessageActions } from "./message-actions";
 import { MessageEditor } from "./message-editor";
 import { MessageReasoning } from "./message-reasoning";
 import { PreviewAttachment } from "./preview-attachment";
+import { StakingOperationResult } from "./staking-operation-result";
+import { StakingResult } from "./staking-result";
 import { Weather } from "./weather";
 
 const PurePreviewMessage = ({
@@ -83,7 +85,7 @@ const PurePreviewMessage = ({
                 ) ||
                   message.parts?.some((p) => p.type.startsWith("tool-")))) ||
               mode === "edit",
-            "max-w-[calc(100%-2.5rem)] sm:max-w-[min(fit-content,80%)]":
+            "max-w-[calc(100%-5.5rem)] sm:max-w-[min(fit-content,80%)]":
               message.role === "user" && mode !== "edit",
           })}
         >
@@ -125,17 +127,12 @@ const PurePreviewMessage = ({
                   <div key={key}>
                     <MessageContent
                       className={cn({
-                        "wrap-break-word w-fit rounded-2xl px-3 py-2 text-right text-white":
+                        "w-fit break-words rounded-2xl border border-border bg-gradient-to-br from-blue-50 to-cyan-50 px-4 py-3 text-right shadow-sm dark:from-blue-950/50 dark:to-cyan-950/50":
                           message.role === "user",
-                        "bg-transparent px-0 py-0 text-left":
+                        "bg-transparent px-0 py-0 text-left text-base":
                           message.role === "assistant",
                       })}
                       data-testid="message-content"
-                      style={
-                        message.role === "user"
-                          ? { backgroundColor: "#006cff" }
-                          : undefined
-                      }
                     >
                       <Response>{sanitizeText(part.text)}</Response>
                     </MessageContent>
@@ -331,6 +328,240 @@ const PurePreviewMessage = ({
                               type="request-suggestions"
                             />
                           )
+                        }
+                      />
+                    )}
+                  </ToolContent>
+                </Tool>
+              );
+            }
+
+            // Staking Query Tools - Special handling for staking query UI
+            if (
+              type === "tool-getAccountBalance" ||
+              type === "tool-getCurrentEpoch" ||
+              type === "tool-getTotalStake" ||
+              type === "tool-getTotalActiveStake" ||
+              type === "tool-getValidatorID" ||
+              type === "tool-getValidatorInfo" ||
+              type === "tool-getSelfStake" ||
+              type === "tool-getStake" ||
+              type === "tool-getUnlockedStake" ||
+              type === "tool-getPendingRewards" ||
+              type === "tool-getRewardsStash" ||
+              type === "tool-getLockupInfo" ||
+              type === "tool-getStakingAPR" ||
+              type === "tool-getValidatorsInfo" ||
+              type === "tool-getStakingStats"
+            ) {
+              const { toolCallId, state } = part;
+
+              return (
+                <Tool
+                  className="w-full max-w-[calc(100%-1rem)] sm:max-w-[calc(100%-6rem)]"
+                  defaultOpen={true}
+                  key={toolCallId}
+                >
+                  <ToolHeader state={state} type={type} />
+                  <ToolContent>
+                    {state === "output-available" && (
+                      <ToolOutput
+                        errorText={
+                          part.output && "error" in part.output
+                            ? String(part.output.error)
+                            : undefined
+                        }
+                        output={
+                          part.output && !("error" in part.output) ? (
+                            <StakingResult
+                              result={part.output}
+                              toolType={type}
+                            />
+                          ) : null
+                        }
+                      />
+                    )}
+                  </ToolContent>
+                </Tool>
+              );
+            }
+
+            // Staking Operations - Special handling for staking UI
+            if (
+              type === "tool-delegateStake" ||
+              type === "tool-undelegateStake" ||
+              type === "tool-claimRewards" ||
+              type === "tool-restakeRewards" ||
+              type === "tool-lockStake"
+            ) {
+              const { toolCallId, state } = part;
+
+              return (
+                <Tool
+                  className="w-full max-w-[calc(100%-1rem)] sm:max-w-[500px]"
+                  defaultOpen={true}
+                  key={toolCallId}
+                >
+                  <ToolHeader state={state} type={type} />
+                  <ToolContent>
+                    {(state === "input-available" ||
+                      state === "approval-requested") && (
+                      <ToolInput input={part.input} />
+                    )}
+                    {state === "approval-requested" && (
+                      (part as { approval?: { id: string } }).approval?.id && (
+                        <div className="flex items-center justify-end gap-2 border-t px-4 py-3">
+                          <button
+                            className="rounded-md px-3 py-1.5 text-muted-foreground text-sm transition-colors hover:bg-muted hover:text-foreground"
+                            onClick={() => {
+                              addToolApprovalResponse({
+                                id: (part as { approval?: { id: string } }).approval!.id,
+                                approved: false,
+                                reason: `User denied ${type}`,
+                              });
+                            }}
+                            type="button"
+                          >
+                            Deny
+                          </button>
+                          <button
+                            className="rounded-md bg-primary px-3 py-1.5 text-primary-foreground text-sm transition-colors hover:bg-primary/90"
+                            onClick={() => {
+                              addToolApprovalResponse({
+                                id: (part as { approval?: { id: string } }).approval!.id,
+                                approved: true,
+                              });
+                            }}
+                            type="button"
+                          >
+                            Allow
+                          </button>
+                        </div>
+                      )
+                    )}
+                    {state === "output-available" && (
+                      <ToolOutput
+                        errorText={
+                          part.output && "error" in part.output
+                            ? String(part.output.error)
+                            : undefined
+                        }
+                        output={
+                          part.output && !("error" in part.output) ? (
+                            <StakingOperationResult
+                              result={part.output}
+                              toolCallId={
+                                "toolCallId" in part
+                                  ? part.toolCallId
+                                  : undefined
+                              }
+                              toolType={type}
+                            />
+                          ) : null
+                        }
+                      />
+                    )}
+                  </ToolContent>
+                </Tool>
+              );
+            }
+
+            // Generic tool rendering for all other tools
+            if (type.startsWith("tool-")) {
+              const { toolCallId, state } = part;
+              const approvalId = (part as { approval?: { id: string } })
+                .approval?.id;
+              const isDenied =
+                state === "output-denied" ||
+                (state === "approval-responded" &&
+                  (part as { approval?: { approved?: boolean } }).approval
+                    ?.approved === false);
+
+              // Handle denied state
+              if (isDenied) {
+                return (
+                  <Tool defaultOpen={true} key={toolCallId}>
+                    <ToolHeader state="output-denied" type={type} />
+                    <ToolContent>
+                      <div className="px-4 py-3 text-muted-foreground text-sm">
+                        Tool execution was denied.
+                      </div>
+                    </ToolContent>
+                  </Tool>
+                );
+              }
+
+              // Handle approval-responded state
+              if (state === "approval-responded") {
+                return (
+                  <Tool defaultOpen={true} key={toolCallId}>
+                    <ToolHeader state={state} type={type} />
+                    <ToolContent>
+                      <ToolInput input={part.input} />
+                    </ToolContent>
+                  </Tool>
+                );
+              }
+
+              // Handle other states (input-available, approval-requested, output-available, etc.)
+              return (
+                <Tool defaultOpen={true} key={toolCallId}>
+                  <ToolHeader state={state} type={type} />
+                  <ToolContent>
+                    {(state === "input-available" ||
+                      state === "approval-requested") && (
+                      <ToolInput input={part.input} />
+                    )}
+                    {state === "approval-requested" && approvalId && (
+                      <div className="flex items-center justify-end gap-2 border-t px-4 py-3">
+                        <button
+                          className="rounded-md px-3 py-1.5 text-muted-foreground text-sm transition-colors hover:bg-muted hover:text-foreground"
+                          onClick={() => {
+                            addToolApprovalResponse({
+                              id: approvalId,
+                              approved: false,
+                              reason: `User denied ${type}`,
+                            });
+                          }}
+                          type="button"
+                        >
+                          Deny
+                        </button>
+                        <button
+                          className="rounded-md bg-primary px-3 py-1.5 text-primary-foreground text-sm transition-colors hover:bg-primary/90"
+                          onClick={() => {
+                            addToolApprovalResponse({
+                              id: approvalId,
+                              approved: true,
+                            });
+                          }}
+                          type="button"
+                        >
+                          Allow
+                        </button>
+                      </div>
+                    )}
+                    {state === "output-available" && (
+                      <ToolOutput
+                        errorText={part.errorText}
+                        output={
+                          "error" in part.output ? (
+                            <div className="rounded border p-2 text-red-500">
+                              Error: {String(part.output.error)}
+                            </div>
+                          ) : (
+                            part.output
+                          )
+                        }
+                      />
+                    )}
+                    {state === "output-error" && (
+                      <ToolOutput
+                        errorText={part.errorText}
+                        output={
+                          <div className="rounded border p-2 text-red-500">
+                            {part.errorText || "An error occurred"}
+                          </div>
                         }
                       />
                     )}

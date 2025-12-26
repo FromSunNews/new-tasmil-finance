@@ -27,6 +27,8 @@ import type { Chat } from "@/lib/db/schema";
 import { fetcher } from "@/lib/utils";
 import { LoaderIcon } from "./icons";
 import { ChatItem } from "./sidebar-history-item";
+import { chatControllerDeleteChat } from "@/gen/client";
+import { withAuth } from "@/lib/kubb-config";
 
 type GroupedChats = {
   today: Chat[];
@@ -78,14 +80,22 @@ const groupChatsByDate = (chats: Chat[]): GroupedChats => {
 
 export function getChatHistoryPaginationKey(
   pageIndex: number,
-  previousPageData: ChatHistory
+  previousPageData: ChatHistory,
+  agentId?: string
 ) {
   if (previousPageData && previousPageData.hasMore === false) {
     return null;
   }
 
+  const params = new URLSearchParams();
+  params.set('limit', String(PAGE_SIZE));
+  
+  if (agentId) {
+    params.set('agentId', agentId);
+  }
+
   if (pageIndex === 0) {
-    return `/api/history?limit=${PAGE_SIZE}`;
+    return `/api/history?${params.toString()}`;
   }
 
   const firstChatFromPage = previousPageData.chats.at(-1);
@@ -94,10 +104,11 @@ export function getChatHistoryPaginationKey(
     return null;
   }
 
-  return `/api/history?ending_before=${firstChatFromPage.id}&limit=${PAGE_SIZE}`;
+  params.set('ending_before', firstChatFromPage.id);
+  return `/api/history?${params.toString()}`;
 }
 
-export function SidebarHistory({ user }: { user: User | undefined }) {
+export function SidebarHistory({ user, agentId }: { user: User | undefined; agentId?: string }) {
   const { setOpenMobile } = useSidebar();
   const pathname = usePathname();
   const id = pathname?.startsWith("/chat/") ? pathname.split("/")[2] : null;
@@ -108,9 +119,13 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
     isValidating,
     isLoading,
     mutate,
-  } = useSWRInfinite<ChatHistory>(getChatHistoryPaginationKey, fetcher, {
-    fallbackData: [],
-  });
+  } = useSWRInfinite<ChatHistory>(
+    (pageIndex, previousPageData) => getChatHistoryPaginationKey(pageIndex, previousPageData, agentId),
+    fetcher,
+    {
+      fallbackData: [],
+    }
+  );
 
   const router = useRouter();
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -124,17 +139,13 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
     ? paginatedChatHistories.every((page) => page.chats.length === 0)
     : false;
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     const chatToDelete = deleteId;
     const isCurrentChat = pathname === `/chat/${chatToDelete}`;
 
     setShowDeleteDialog(false);
 
-    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
-    const deletePromise = fetch(`${API_BASE_URL}/api/chat?id=${chatToDelete}`, {
-      method: "DELETE",
-      credentials: "include",
-    });
+    const deletePromise = chatControllerDeleteChat({ id: chatToDelete! }, withAuth);
 
     toast.promise(deletePromise, {
       loading: "Deleting chat...",
