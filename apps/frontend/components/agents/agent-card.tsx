@@ -1,9 +1,11 @@
 "use client";
 
+import Image from "next/image";
 import { LucideIcon, Settings, Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
 // Agent type from API response
 type Agent = {
   id: string;
@@ -23,6 +25,44 @@ interface AgentCardProps {
 // Map agent type to icon
 const getTypeIcon = (type: string): LucideIcon => {
   return type === "Strategy" ? Settings : Sparkles;
+};
+
+// Map chain name to logo path
+const getChainLogo = (chainName: string): string => {
+  const chainMap: Record<string, string> = {
+    'ethereum': '/images/chains/ethereum.png',
+    'eth': '/images/chains/ethereum.png',
+    'arbitrum': '/images/chains/arbitrum.png',
+    'avalanche': '/images/chains/avalanche.png',
+    'avax': '/images/chains/avalanche.png',
+    'bnb': '/images/chains/bnb.png',
+    'bsc': '/images/chains/bnb.png',
+    'core': '/images/chains/core.png',
+    'duckchain': '/images/chains/duckchain.png',
+    'linea': '/images/chains/linea.png',
+    'manta': '/images/chains/manta.png',
+    'mantle': '/images/chains/mantle.png',
+    'metis': '/images/chains/metis.png',
+    'mint': '/images/chains/mint.png',
+    'morph': '/images/chains/morph.png',
+    'optimism': '/images/chains/optimism.png',
+    'op': '/images/chains/optimism.png',
+    'overprotocol': '/images/chains/overprotocol.png',
+    'polygon': '/images/chains/polygonpos.png',
+    'polygonpos': '/images/chains/polygonpos.png',
+    'polygonzk': '/images/chains/polygonzk.png',
+    'scroll': '/images/chains/scroll.png',
+    'taiko': '/images/chains/taiko.png',
+    'u2u': '/images/tokens/u2u.png',
+    'u2usolaris': '/images/tokens/u2u.png',
+    'xlayer': '/images/chains/xlayer.png',
+    'zeta': '/images/chains/zeta.png',
+    'zircuit': '/images/chains/zircuit.png',
+    'zksync': '/images/chains/zksync.png',
+  };
+  
+  const normalized = chainName.toLowerCase().replace(/\s+/g, '');
+  return chainMap[normalized] || '/images/chains/default.png';
 };
 
 export function AgentCard({ agent, onClick, hasPromptToDeFi = false }: AgentCardProps) {
@@ -47,18 +87,30 @@ export function AgentCard({ agent, onClick, hasPromptToDeFi = false }: AgentCard
       )}
 
       <CardHeader className="pb-4">
-        <div className="p-3 w-fit rounded-lg bg-secondary mb-4">
-          {agent.icon ? (
-            <img
-              src={agent.icon}
-              alt={agent.name}
-              className="w-6 h-6 rounded object-cover"
-            />
-          ) : (
-            <TypeIcon size={24} className="text-foreground" />
-          )}
+        {/* Image and Title in horizontal layout */}
+        <div className="flex items-center gap-4">
+          {/* Agent Icon */}
+            {agent.icon ? (
+              <Image
+                src={agent.icon}
+                alt={agent.name}
+                width={80}
+                height={80}
+                className="rounded object-cover"
+              />
+            ) : (
+              <TypeIcon size={80} className="text-foreground" />
+            )}
+
+          {/* Title and Type Badge */}
+          <div className="flex-1 min-w-0">
+            <h3 className="text-lg font-semibold text-foreground mb-2">{agent.name}</h3>
+            <Badge variant="outline" className="gap-1">
+              <TypeIcon size={12} />
+              {agent.type}
+            </Badge>
+          </div>
         </div>
-        <h3 className="text-lg font-semibold text-foreground">{agent.name}</h3>
       </CardHeader>
 
       <CardContent className="space-y-6">
@@ -71,20 +123,18 @@ export function AgentCard({ agent, onClick, hasPromptToDeFi = false }: AgentCard
           ))}
         </ul>
 
-        <div className="flex flex-wrap gap-2">
-          <Badge variant="outline" className="gap-1">
-            <TypeIcon size={12} />
-            {agent.type}
-          </Badge>
-        </div>
-
         {agent.supportedChains.length > 0 && (
           <div className="pt-4 border-t border-border">
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Supported Chains</span>
               <div className="flex items-center gap-1">
                 {displayChains.map((chain, index) => (
-                  <Avatar key={index} className="h-6 w-6">
+                  <Avatar key={index} className="h-8 w-8 border border-border">
+                    <AvatarImage 
+                      src={getChainLogo(chain)} 
+                      alt={chain}
+                      className="object-cover"
+                    />
                     <AvatarFallback className="text-xs font-medium bg-secondary">
                       {chain[0]}
                     </AvatarFallback>

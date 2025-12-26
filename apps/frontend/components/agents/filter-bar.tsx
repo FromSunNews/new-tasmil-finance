@@ -31,16 +31,23 @@ export function FilterBar({
 }: FilterBarProps) {
   return (
     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 py-6">
-      <div className="flex items-center gap-1 p-1 bg-secondary rounded-lg">
+      <div className="flex items-center gap-1 p-1 bg-secondary rounded-full">
         {filters.map((filter) => (
           <Button
             key={filter.label}
             variant={activeFilter === filter.label ? "default" : "ghost"}
             size="sm"
             onClick={() => onFilterChange(filter.label)}
-            className="gap-2"
+            className={`gap-2 rounded-full transition-all ${
+              activeFilter === filter.label 
+                ? "relative overflow-hidden bg-gradient-to-b from-[#B5EAFF] to-[#00BFFF] font-bold text-black hover:scale-105 hover:from-[#C5F0FF] hover:to-[#1CCFFF]" 
+                : ""
+            }`}
             type="button"
           >
+            {activeFilter === filter.label && (
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 h-4 w-[50%] rounded-full bg-white/80 blur-xl" />
+            )}
             {filter.icon && <filter.icon size={14} />}
             {filter.label}
           </Button>
@@ -67,7 +74,7 @@ export function FilterBar({
             placeholder="Search agent"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full sm:w-64 pl-9"
+            className="w-full sm:w-64 pl-9 rounded-full"
           />
         </div>
 
