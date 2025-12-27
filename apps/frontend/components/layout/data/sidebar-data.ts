@@ -37,15 +37,15 @@ export const sidebarData: SidebarData = {
         },
       ],
     },
-    {
-      items: [
-        {
-          title: "Community",
-          url: "/community",
-          icon: IconUsers,
-        },
-      ],
-    },
+    // {
+    //   items: [
+    //     {
+    //       title: "Community",
+    //       url: "/community",
+    //       icon: IconUsers,
+    //     },
+    //   ],
+    // },
     {
       items: [
         {

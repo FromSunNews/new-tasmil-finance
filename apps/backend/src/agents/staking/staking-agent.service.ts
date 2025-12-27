@@ -24,9 +24,9 @@ export class StakingAgentService implements IAgent {
 
   getDescription(): string[] {
     return [
-      "Query staking information on U2U Solaris network",
-      "Delegate, undelegate, claim rewards, and manage your staking",
-      "Get validator information and network statistics",
+      "Query staking information on U2U network",
+      "Delegate, undelegate, and claim rewards",
+      "Get validator info and network statistics",
     ];
   }
 
@@ -35,11 +35,11 @@ export class StakingAgentService implements IAgent {
   }
 
   getIcon(): string {
-    return "/sidebar/staking-agent.png";
+    return "/agents/staking-agent.svg";
   }
 
   getSupportedChains(): string[] {
-    return ["U2U Solaris"];
+    return ["U2U"];
   }
 
   getTools(

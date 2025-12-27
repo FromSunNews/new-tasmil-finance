@@ -77,11 +77,9 @@ export class ResearchAgentService implements IAgent {
 
   getDescription(): string[] {
     return [
-      "Get real-time cryptocurrency prices and market data",
-      "Perform technical analysis with RSI, MACD, and moving averages",
-      "Calculate investment scores and recommendations",
-      "Access trending coins, DeFi TVL, and market news",
-      "Compare cryptocurrencies and generate research reports",
+      "Get real-time crypto prices and market data",
+      "Perform technical analysis with RSI, MACD",
+      "Calculate investment scores and compare coins",
     ];
   }
 
@@ -94,7 +92,29 @@ export class ResearchAgentService implements IAgent {
   }
 
   getSupportedChains(): string[] {
-    return ["All Chains"];
+    return [
+      "U2U",
+      "Ethereum",
+      "Arbitrum",
+      "Optimism",
+      "Polygon",
+      "BSC",
+      "Avalanche",
+      "Solana",
+      "Base",
+      "zkSync",
+      "Linea",
+      "Scroll",
+      "Mantle",
+      "Manta",
+      "Blast",
+      "Mode",
+      "Fantom",
+      "Gnosis",
+      "Celo",
+      "Moonbeam",
+      "Aurora",
+    ];
   }
 
   getTools(

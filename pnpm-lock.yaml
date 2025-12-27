@@ -101,6 +101,9 @@ importers:
       next-auth:
         specifier: 5.0.0-beta.25
         version: 5.0.0-beta.25(next@15.5.9)(react@19.2.3)
+      owlto-sdk:
+        specifier: ^0.2.5
+        version: 0.2.5
       passport:
         specifier: ^0.7.0
         version: 0.7.0
@@ -16748,10 +16751,10 @@ packages:
         optional: true
     dependencies:
       '@adraffy/ens-normalize': 1.11.1
-      '@noble/curves': 1.8.1
+      '@noble/curves': 1.9.7
       '@noble/hashes': 1.8.0
-      '@scure/bip32': 1.6.2
-      '@scure/bip39': 1.5.4
+      '@scure/bip32': 1.7.0
+      '@scure/bip39': 1.6.0
       abitype: 1.0.8(typescript@5.8.2)(zod@3.25.76)
       eventemitter3: 5.0.1
       typescript: 5.8.2

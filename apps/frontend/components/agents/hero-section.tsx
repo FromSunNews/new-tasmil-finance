@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { Bot, Brain, Zap, TrendingUp } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import LightPillar from "@/components/ui/light-pillar";
@@ -12,7 +13,7 @@ const tokens = [
   { symbol: "btc", position: { top: "10%", right: "15%" }, size: 40 },
   { symbol: "eth", position: { top: "15%", right: "35%" }, size: 38 },
   { symbol: "sol", position: { top: "35%", right: "8%" }, size: 36 },
-  { symbol: "matic", position: { top: "45%", right: "25%" }, size: 34 },
+  { symbol: "u2u", position: { top: "45%", right: "25%" }, size: 42, isCustom: true },
   { symbol: "bnb", position: { bottom: "20%", right: "12%" }, size: 38 },
   { symbol: "avax", position: { bottom: "5%", right: "25%" }, size: 36 },
   { symbol: "usdt", position: { top: "70%", right: "40%" }, size: 36 },
@@ -55,12 +56,22 @@ export function HeroSection({ agentCount }: HeroSectionProps) {
             }}
           >
             <div className="p-2.5 bg-black/40 backdrop-blur-md border rounded-full shadow-xl">
-              <TokenIcon 
-                symbol={token.symbol} 
-                variant="branded" 
-                size={token.size}
-                className="drop-shadow-lg"
-              />
+              {token.isCustom ? (
+                <Image
+                  src="/images/tokens/u2u.png"
+                  alt="U2U"
+                  width={token.size}
+                  height={token.size}
+                  className="drop-shadow-lg rounded-full"
+                />
+              ) : (
+                <TokenIcon 
+                  symbol={token.symbol} 
+                  variant="branded" 
+                  size={token.size}
+                  className="drop-shadow-lg"
+                />
+              )}
             </div>
           </div>
         ))}
@@ -68,11 +79,11 @@ export function HeroSection({ agentCount }: HeroSectionProps) {
         {/* Text content - On top with padding */}
         <div className="relative z-10 h-full flex flex-col justify-center p-8 md:p-12 max-w-3xl">
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-foreground">
-            Explore AI Agent Swarm
+            Explore AI Tasmil Agents
           </h1>
           
           <p className="text-lg md:text-xl text-foreground/90 mb-8 leading-relaxed max-w-[70%]">
-            Discover AI Agent Swarm — specialized, collaborative AI Agents
+            Discover AI Tasmil Agents — specialized, collaborative AI Agents
             that power Intelligence and Strategies
           </p>
 

@@ -173,6 +173,51 @@ const agentSuggestions = {
     "Which pools have the most liquidity?",
   ],
   
+  bridge: [
+    // General Bridge Questions
+    "Show me available bridge routes",
+    "What tokens can I bridge?",
+    "What chains are supported for bridging?",
+    "How do I bridge tokens to U2U?",
+    
+    // Bridge from U2U
+    "Bridge 100 USDT from U2U to Ethereum",
+    "Bridge 50 USDC from U2U to BSC",
+    "Bridge tokens from U2U to Polygon",
+    "Bridge U2U to Arbitrum",
+    
+    // Bridge to U2U
+    "Bridge 100 USDT from Ethereum to U2U",
+    "Bridge USDC from BSC to U2U",
+    "Bridge tokens from Polygon to U2U",
+    "How to bridge from Arbitrum to U2U?",
+    
+    // Quote & Fees
+    "What's the fee to bridge USDT to Ethereum?",
+    "Get a bridge quote for 100 USDC",
+    "How much does it cost to bridge to BSC?",
+    "Show me bridge fees for U2U",
+    
+    // Bridge Limits
+    "What's the minimum amount to bridge?",
+    "What's the maximum bridge amount?",
+    "Show me bridge limits for USDT",
+    
+    // Chain-Specific
+    "Bridge to Ethereum",
+    "Bridge to BSC",
+    "Bridge to Polygon",
+    "Bridge to Arbitrum",
+    "Bridge to Optimism",
+    "Bridge to Avalanche",
+    
+    // Help & Info
+    "How long does bridging take?",
+    "Is bridging safe?",
+    "What is Owlto Bridge?",
+    "Help me understand cross-chain bridging",
+  ],
+  
   // Default suggestions for unknown agents or general chat
   default: [
     "What can you help me with?",
@@ -205,6 +250,8 @@ function PureSuggestedActions({ chatId, sendMessage }: SuggestedActionsProps) {
         return agentSuggestions.research;
       case "yield":
         return agentSuggestions.yield;
+      case "bridge":
+        return agentSuggestions.bridge;
       default:
         return agentSuggestions.default;
     }
@@ -251,6 +298,8 @@ function PureSuggestedActions({ chatId, sendMessage }: SuggestedActionsProps) {
         return "Research Agent";
       case "yield":
         return "Yield Agent";
+      case "bridge":
+        return "Bridge Agent";
       default:
         return "General Assistant";
     }
