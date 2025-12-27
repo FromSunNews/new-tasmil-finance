@@ -228,3 +228,5 @@ def create_simple_staking_agent():
         middleware=[StakingLoggingMiddleware()],
         state_schema=State,
     )
+
+graph = create_simple_staking_agent()

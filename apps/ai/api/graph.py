@@ -49,6 +49,7 @@ async def register_graph(
     config: dict | None,
     *,
     description: str | None = None,
+    metadata: dict | None = None,
 ) -> None:
     """Register a graph."""
     from storage.database import connect
@@ -78,6 +79,10 @@ async def register_graph(
                 if graph_name is not None and graph_name != "LangGraph"
                 else graph_id
             )
+            # Merge custom metadata with default metadata
+            default_metadata = {"created_by": "system"}
+            final_metadata = {**default_metadata, **(metadata or {})}
+            
             if FF_USE_CORE_API:
                 await Assistants.put(
                     conn,
@@ -87,7 +92,7 @@ async def register_graph(
                     if_exists="do_nothing",
                     name=assistant_name,
                     config=config or {},
-                    metadata={"created_by": "system"},
+                    metadata=final_metadata,
                     description=description,
                 )
             else:
@@ -95,7 +100,7 @@ async def register_graph(
                     conn,
                     str(uuid5(NAMESPACE_GRAPH, graph_id)),
                     graph_id=graph_id,
-                    metadata={"created_by": "system"},
+                    metadata=final_metadata,
                     if_exists="do_nothing",
                     name=assistant_name,
                     config=config or {},
@@ -253,6 +258,8 @@ class GraphSpec(NamedTuple):
     """
     description: str | None = None
     """A description of the graph"""
+    metadata: dict | None = None
+    """Custom metadata for the graph"""
 
 
 js_bg_tasks: set[asyncio.Task] = set()
@@ -335,6 +342,9 @@ async def collect_graphs_from_env(register: bool = False) -> None:
             description = (
                 value.get("description", None) if isinstance(value, dict) else None
             )
+            metadata = (
+                value.get("metadata", None) if isinstance(value, dict) else None
+            )
 
             # Module syntax uses `.` instead of `/` to separate directories
             if "/" in path_or_module:
@@ -352,6 +362,7 @@ async def collect_graphs_from_env(register: bool = False) -> None:
                     variable=variable,
                     config=graph_config,
                     description=description,
+                    metadata=metadata,
                 )
             )
     else:
@@ -426,7 +437,7 @@ async def collect_graphs_from_env(register: bool = False) -> None:
             graph = RemotePregel(graph_id=spec.id)
             if register:
                 await register_graph(
-                    spec.id, graph, spec.config, description=spec.description
+                    spec.id, graph, spec.config, description=spec.description, metadata=spec.metadata
                 )
 
     for spec in py_specs:
@@ -436,7 +447,7 @@ async def collect_graphs_from_env(register: bool = False) -> None:
             raise GraphLoadError(spec, exc) from exc
         if register:
             await register_graph(
-                spec.id, graph, spec.config, description=spec.description
+                spec.id, graph, spec.config, description=spec.description, metadata=spec.metadata
             )
 
 
