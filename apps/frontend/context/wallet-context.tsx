@@ -10,10 +10,10 @@ import React, {
 import { useAccount, useDisconnect, useSignMessage } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useWalletStore } from "@/store/use-wallet";
-import { useAuthStore } from "@/store/use-auth";
+import { useAuthStore, type AuthUser } from "@/store/use-auth";
 import { toast } from "sonner";
 import { authControllerGetWalletNonce, authControllerWalletLogin } from "@/gen/client";
-import { withAuth } from "@/lib/kubb-config";
+import apiClient from "@/lib/api-client";
 
 interface WalletContextType {
   isConnected: boolean;
@@ -24,6 +24,7 @@ interface WalletContextType {
   user: ReturnType<typeof useAuthStore>["user"];
   connect: () => void;
   disconnect: () => void;
+  forceReauth: () => Promise<void>;
 }
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
@@ -50,22 +51,51 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({
   // Track if authentication is currently in progress
   const authInProgressRef = useRef(false);
 
+  // Check if token is valid by making a test request
+  const isTokenValid = useCallback(async () => {
+    const { accessToken } = useAuthStore.getState();
+    if (!accessToken) return false;
+    
+    try {
+      // Use the existing /api/auth/session endpoint to check token validity
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:9337"}/api/auth/session`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      return response.ok;
+    } catch {
+      return false;
+    }
+  }, []);
+
   // Perform authentication with wallet
   const authenticateWithWallet = useCallback(
-    async (walletAddress: string) => {
-      // Prevent duplicate auth attempts
-      if (authAttemptedRef.current === walletAddress) {
-        return;
-      }
-
+    async (walletAddress: string, forceReauth = false) => {
       // Prevent if authentication is already in progress
       if (authInProgressRef.current) {
         return;
       }
 
-      // Skip if already authenticated with this address
-      if (isAuthenticated && user?.walletAddress?.toLowerCase() === walletAddress.toLowerCase()) {
-        return;
+      // Check if we need to re-authenticate
+      if (!forceReauth && authAttemptedRef.current === walletAddress) {
+        // If we've attempted auth for this address, check if token is still valid
+        const tokenValid = await isTokenValid();
+        if (tokenValid && isAuthenticated && user?.walletAddress?.toLowerCase() === walletAddress.toLowerCase()) {
+          return;
+        }
+        // Token is invalid or user not authenticated, proceed with re-auth
+      }
+
+      // Skip if already authenticated with this address and token is valid
+      if (!forceReauth && isAuthenticated && user?.walletAddress?.toLowerCase() === walletAddress.toLowerCase()) {
+        const tokenValid = await isTokenValid();
+        if (tokenValid) {
+          authAttemptedRef.current = walletAddress;
+          return;
+        }
+        // Token is invalid, proceed with re-auth
       }
 
       authAttemptedRef.current = walletAddress;
@@ -75,9 +105,10 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({
       try {
         // Step 1: Get nonce from backend
         setSigning(false);
+        console.log('Making nonce request to:', apiClient.defaults.baseURL);
         const nonceResponse = await authControllerGetWalletNonce(
           { walletAddress },
-          withAuth
+          { client: apiClient }
         );
         const { nonce, message } = nonceResponse as { nonce: string; message?: string };
 
@@ -90,8 +121,8 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({
         // Step 3: Send signature to backend for verification
         const loginResponse = await authControllerWalletLogin(
           { walletAddress, signature },
-          withAuth
-        ) as { access_token: string; user: unknown };
+          { client: apiClient }
+        ) as { access_token: string; user: AuthUser };
 
         // Step 4: Update auth state
         setAuthState({
@@ -127,7 +158,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({
         toast.error(errorMessage);
       }
     },
-    [signMessageAsync, setAuthState, setLoading, setSigning, isAuthenticated, user]
+    [signMessageAsync, setAuthState, setLoading, setSigning, isAuthenticated, user, isTokenValid]
   );
 
   // Handle wallet connection changes
@@ -145,19 +176,30 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({
 
     // If wallet is connected, authenticate
     if (isConnected && address) {
-      // Check if already authenticated with this address
-      if (isAuthenticated && user?.walletAddress?.toLowerCase() === address.toLowerCase()) {
-        authAttemptedRef.current = address;
-        return;
-      }
-
-      // Authenticate with wallet
+      // Always attempt authentication when wallet connects
+      // The authenticateWithWallet function will handle token validation
       authenticateWithWallet(address);
     } else if (!isConnected) {
-      // Wallet disconnected
+      // Wallet disconnected - clear auth attempt tracking
       authAttemptedRef.current = null;
+      authInProgressRef.current = false;
     }
   }, [isConnected, address, isAuthenticated, user, authenticateWithWallet, setWalletState]);
+
+  // Listen for token expiration events from API client
+  useEffect(() => {
+    const handleTokenExpired = () => {
+      if (isConnected && address) {
+        // Force re-authentication when token expires
+        authAttemptedRef.current = null;
+        authInProgressRef.current = false;
+        authenticateWithWallet(address, true);
+      }
+    };
+
+    window.addEventListener('auth-token-expired', handleTokenExpired);
+    return () => window.removeEventListener('auth-token-expired', handleTokenExpired);
+  }, [isConnected, address, authenticateWithWallet]);
 
   const connect = useCallback(() => {
     openConnectModal?.();
@@ -168,7 +210,16 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({
     authLogout();
     resetWallet();
     authAttemptedRef.current = null;
+    authInProgressRef.current = false;
   }, [wagmiDisconnect, authLogout, resetWallet]);
+
+  const forceReauth = useCallback(async () => {
+    if (address) {
+      authAttemptedRef.current = null;
+      authInProgressRef.current = false;
+      await authenticateWithWallet(address, true);
+    }
+  }, [address, authenticateWithWallet]);
 
   const displayAddress = address
     ? `${address.slice(0, 6)}...${address.slice(-4)}`
@@ -183,6 +234,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({
     user,
     connect,
     disconnect,
+    forceReauth,
   };
 
   return (

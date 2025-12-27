@@ -15,6 +15,8 @@ const getApiBaseUrl = () => {
 
 const API_BASE_URL = getApiBaseUrl();
 
+console.log('API_BASE_URL configured as:', API_BASE_URL);
+
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,
@@ -40,40 +42,20 @@ apiClient.interceptors.response.use(
   async (error: AxiosError) => {
     const orig = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
     if (error.response?.status === 401 && !orig._retry) {
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        }).then(token => {
-          orig.headers.Authorization = `Bearer ${token}`;
-          return apiClient(orig);
-        }).catch(err => Promise.reject(err));
-      }
-
+      // Mark this request as retried to prevent infinite loops
       orig._retry = true;
-      isRefreshing = true;
-      const { logout, setTokens } = useAuthStore.getState();
-
-      try {
-        // Try to refresh token - if refresh endpoint doesn't exist, just logout
-        const { data } = await axios.post(`${API_BASE_URL}/api/auth/refresh`, {}, {
-          withCredentials: true,
-        });
-        const { accessToken: newToken } = data.data || data;
-        if (newToken) {
-          setTokens(newToken);
-          processQueue(null, newToken);
-          orig.headers.Authorization = `Bearer ${newToken}`;
-          return apiClient(orig);
-        } else {
-          throw new Error('No access token in refresh response');
-        }
-      } catch (e) {
-        processQueue(e as Error, null);
-        logout();
-        return Promise.reject(e);
-      } finally {
-        isRefreshing = false;
+      
+      // Clear the auth state
+      const { logout } = useAuthStore.getState();
+      logout();
+      
+      // If we're in a browser environment, try to trigger re-authentication
+      if (typeof window !== 'undefined') {
+        // Dispatch a custom event that the wallet context can listen to
+        window.dispatchEvent(new CustomEvent('auth-token-expired'));
       }
+      
+      return Promise.reject(error);
     }
     return Promise.reject(error);
   }

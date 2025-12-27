@@ -214,7 +214,7 @@ MainNavbarProps) => {
         router.push(PATHS.DEFI_AGENT);
         break;
       case "DOCS":
-        window.open(PATHS.DOCS, "_blank");
+        router.push(PATHS.DOCS);
         break;
       default:
         break;
@@ -399,7 +399,6 @@ MainNavbarProps) => {
           href={PATHS.DEFI_AGENT}
           rel="noopener noreferrer"
           tabIndex={0}
-          target="_blank"
         >
           <Button
             className="rounded-lg px-4 py-2 font-mono font-semibold text-black text-sm uppercase transition-all duration-300 hover:tracking-wider"

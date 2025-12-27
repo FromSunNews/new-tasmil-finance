@@ -870,6 +870,40 @@ export const ChevronDownIcon = ({ size = 16 }: { size?: number }) => (
   </svg>
 );
 
+export const ChevronUpIcon = ({ size = 16 }: { size?: number }) => (
+  <svg
+    height={size}
+    strokeLinejoin="round"
+    style={{ color: "currentcolor" }}
+    viewBox="0 0 16 16"
+    width={size}
+  >
+    <path
+      clipRule="evenodd"
+      d="M3.93933 9.25001L4.46966 8.71968L7.29288 5.89646C7.68341 5.50594 8.31657 5.50594 8.7071 5.89646L11.5303 8.71968L12.0607 9.25001L11 10.3107L10.4697 9.78034L7.99999 7.31067L5.53032 9.78034L4.99999 10.3107L3.93933 9.25001Z"
+      fill="currentColor"
+      fillRule="evenodd"
+    />
+  </svg>
+);
+
+export const RefreshIcon = ({ size = 16 }: { size?: number }) => (
+  <svg
+    height={size}
+    strokeLinejoin="round"
+    style={{ color: "currentcolor" }}
+    viewBox="0 0 16 16"
+    width={size}
+  >
+    <path
+      clipRule="evenodd"
+      d="M8 2.5a5.5 5.5 0 0 0-5.5 5.5.75.75 0 0 1-1.5 0 7 7 0 0 1 7-7V.75a.75.75 0 0 1 1.28-.53l1.5 1.5a.75.75 0 0 1 0 1.06l-1.5 1.5A.75.75 0 0 1 8.5 3.75V2.5ZM13.5 8a5.5 5.5 0 0 1-5.5 5.5v-1.25a.75.75 0 0 0-1.28.53l1.5 1.5a.75.75 0 0 0 1.06 0l1.5-1.5A.75.75 0 0 0 8.5 12.25V13.5A7 7 0 0 0 15.5 8a.75.75 0 0 0-1.5 0Z"
+      fill="currentColor"
+      fillRule="evenodd"
+    />
+  </svg>
+);
+
 export const SparklesIcon = ({ size = 16 }: { size?: number }) => (
   <svg
     height={size}

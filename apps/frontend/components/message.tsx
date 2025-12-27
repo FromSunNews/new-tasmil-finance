@@ -22,8 +22,10 @@ import { MessageActions } from "./message-actions";
 import { MessageEditor } from "./message-editor";
 import { MessageReasoning } from "./message-reasoning";
 import { PreviewAttachment } from "./preview-attachment";
+import { ResearchResult } from "./research-result";
 import { StakingOperationResult } from "./staking-operation-result";
 import { StakingResult } from "./staking-result";
+import { YieldResult } from "./yield-result";
 import { Weather } from "./weather";
 
 const PurePreviewMessage = ({
@@ -455,6 +457,94 @@ const PurePreviewMessage = ({
                                   ? part.toolCallId
                                   : undefined
                               }
+                              toolType={type}
+                            />
+                          ) : null
+                        }
+                      />
+                    )}
+                  </ToolContent>
+                </Tool>
+              );
+            }
+
+            // Research Tools - Special handling for research UI
+            if (
+              type === "tool-getCryptoPrice" ||
+              type === "tool-getMultiplePrices" ||
+              type === "tool-getTrendingCoins" ||
+              type === "tool-getTopCoins" ||
+              type === "tool-searchCoins" ||
+              type === "tool-getCryptoNews" ||
+              type === "tool-getDefiTVL" ||
+              type === "tool-getGlobalMarketData" ||
+              type === "tool-analyzeCrypto" ||
+              type === "tool-calculateInvestmentScore" ||
+              type === "tool-compareCryptos" ||
+              type === "tool-generateResearchSummary"
+            ) {
+              const { toolCallId, state } = part;
+
+              return (
+                <Tool
+                  className="w-full max-w-[calc(100%-1rem)] sm:max-w-[500px]"
+                  defaultOpen={false}
+                  key={toolCallId}
+                >
+                  <ToolHeader state={state} type={type} />
+                  <ToolContent>
+                    {state === "output-available" && (
+                      <ToolOutput
+                        errorText={
+                          part.output && "error" in part.output
+                            ? String(part.output.error)
+                            : undefined
+                        }
+                        output={
+                          part.output && !("error" in part.output) ? (
+                            <ResearchResult
+                              result={part.output}
+                              toolType={type}
+                            />
+                          ) : null
+                        }
+                      />
+                    )}
+                  </ToolContent>
+                </Tool>
+              );
+            }
+
+            // Yield Tools - Special handling for yield UI
+            if (
+              type === "tool-getYieldPools" ||
+              type === "tool-getTopYieldsByChain" ||
+              type === "tool-getYieldHistory" ||
+              type === "tool-getYieldStats" ||
+              type === "tool-searchPoolsByToken" ||
+              type === "tool-getStablecoinYields"
+            ) {
+              const { toolCallId, state } = part;
+
+              return (
+                <Tool
+                  className="w-full max-w-[calc(100%-1rem)] sm:max-w-[500px]"
+                  defaultOpen={false}
+                  key={toolCallId}
+                >
+                  <ToolHeader state={state} type={type} />
+                  <ToolContent>
+                    {state === "output-available" && (
+                      <ToolOutput
+                        errorText={
+                          part.output && "error" in part.output
+                            ? String(part.output.error)
+                            : undefined
+                        }
+                        output={
+                          part.output && !("error" in part.output) ? (
+                            <YieldResult
+                              result={part.output}
                               toolType={type}
                             />
                           ) : null

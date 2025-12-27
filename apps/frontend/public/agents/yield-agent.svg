@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80" fill="none">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#16213e;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="iconGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00ff88;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00cc44;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="chartGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff6b35;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f7931e;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="80" height="80" rx="16" fill="url(#bgGrad)"/>
+  
+  <!-- Chart container -->
+  <rect x="18" y="25" width="44" height="30" rx="4" stroke="url(#iconGrad)" stroke-width="2.5" fill="none"/>
+  
+  <!-- Growth chart bars -->
+  <rect x="22" y="45" width="4" height="6" rx="1" fill="url(#chartGrad)" opacity="0.8"/>
+  <rect x="28" y="42" width="4" height="9" rx="1" fill="url(#chartGrad)" opacity="0.8"/>
+  <rect x="34" y="38" width="4" height="13" rx="1" fill="url(#chartGrad)" opacity="0.8"/>
+  <rect x="40" y="35" width="4" height="16" rx="1" fill="url(#chartGrad)" opacity="0.8"/>
+  <rect x="46" y="32" width="4" height="19" rx="1" fill="url(#chartGrad)" opacity="0.8"/>
+  <rect x="52" y="29" width="4" height="22" rx="1" fill="url(#chartGrad)" opacity="0.8"/>
+  
+  <!-- Trend arrow -->
+  <path d="M48 35 L56 27 L52 27 L52 23 L60 23 L60 31 L56 31 Z" 
+        fill="url(#iconGrad)" opacity="0.9"/>
+  
+  <!-- Percentage symbol -->
+  <circle cx="25" cy="15" r="3" stroke="url(#iconGrad)" stroke-width="2" fill="none"/>
+  <circle cx="35" cy="25" r="2" stroke="url(#iconGrad)" stroke-width="1.5" fill="none"/>
+  <line x1="22" y1="28" x2="38" y2="12" stroke="url(#iconGrad)" stroke-width="2" stroke-linecap="round"/>
+  
+  <!-- APY text -->
+  <text x="20" y="68" font-family="Arial, sans-serif" font-size="8" font-weight="bold" fill="url(#iconGrad)">APY</text>
+  
+  <!-- Sparkles -->
+  <circle cx="65" cy="15" r="2.5" fill="#00ff88" opacity="0.6"/>
+  <circle cx="15" cy="65" r="2" fill="#f7931e" opacity="0.4"/>
+  <circle cx="65" cy="65" r="1.5" fill="#00cc44" opacity="0.5"/>
+</svg>
