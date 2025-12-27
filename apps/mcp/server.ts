@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StreamableHttpServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
 import { build_txn, submit_txn, query } from "./index.js";
 import { SUPPORTED_CHAINS } from "./chains.js";
@@ -267,7 +267,7 @@ server.registerTool(
 
 // Main function to start the server
 async function main() {
-    const transport = new StreamableHttpServerTransport();
+    const transport = new StreamableHTTPServerTransport();
     await server.connect(transport);
 
     console.error("Blockchain Transaction MCP Server running on stdio");
