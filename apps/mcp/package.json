@@ -3,15 +3,23 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "bin": {
+    "blockchain-mcp-server": "./dist/server.js"
+  },
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "tsc && node dist/server.js",
+    "test": "tsc && node dist/test-server.js"
   },
   "dependencies": {
-    "viem": "^2.21.54"
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "viem": "^2.21.54",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@repo/typescript-config": "workspace:*",
+    "@types/node": "^22.10.2",
     "typescript": "5.5.4"
   }
 }
-
