@@ -101,6 +101,9 @@ importers:
       next-auth:
         specifier: 5.0.0-beta.25
         version: 5.0.0-beta.25(next@15.5.9)(react@19.2.3)
+      owlto-sdk:
+        specifier: ^0.2.5
+        version: 0.2.5
       passport:
         specifier: ^0.7.0
         version: 0.7.0

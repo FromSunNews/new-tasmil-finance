@@ -4,7 +4,8 @@ import Image from "next/image";
 import { LucideIcon, Settings, Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { TokenIcon } from "@web3icons/react/dynamic";
 
 // Agent type from API response
 type Agent = {
@@ -27,50 +28,75 @@ const getTypeIcon = (type: string): LucideIcon => {
   return type === "Strategy" ? Settings : Sparkles;
 };
 
-// Map chain name to logo path
-const getChainLogo = (chainName: string): string => {
+// Map chain name to token symbol for web3icons
+const getChainTokenSymbol = (chainName: string): string => {
   const chainMap: Record<string, string> = {
-    'ethereum': '/images/chains/ethereum.png',
-    'eth': '/images/chains/ethereum.png',
-    'arbitrum': '/images/chains/arbitrum.png',
-    'avalanche': '/images/chains/avalanche.png',
-    'avax': '/images/chains/avalanche.png',
-    'bnb': '/images/chains/bnb.png',
-    'bsc': '/images/chains/bnb.png',
-    'core': '/images/chains/core.png',
-    'duckchain': '/images/chains/duckchain.png',
-    'linea': '/images/chains/linea.png',
-    'manta': '/images/chains/manta.png',
-    'mantle': '/images/chains/mantle.png',
-    'metis': '/images/chains/metis.png',
-    'mint': '/images/chains/mint.png',
-    'morph': '/images/chains/morph.png',
-    'optimism': '/images/chains/optimism.png',
-    'op': '/images/chains/optimism.png',
-    'overprotocol': '/images/chains/overprotocol.png',
-    'polygon': '/images/chains/polygonpos.png',
-    'polygonpos': '/images/chains/polygonpos.png',
-    'polygonzk': '/images/chains/polygonzk.png',
-    'scroll': '/images/chains/scroll.png',
-    'taiko': '/images/chains/taiko.png',
-    'u2u': '/images/tokens/u2u.png',
-    'u2usolaris': '/images/tokens/u2u.png',
-    'xlayer': '/images/chains/xlayer.png',
-    'zeta': '/images/chains/zeta.png',
-    'zircuit': '/images/chains/zircuit.png',
-    'zksync': '/images/chains/zksync.png',
+    'ethereum': 'eth',
+    'eth': 'eth',
+    'arbitrum': 'arb',
+    'avalanche': 'avax',
+    'avax': 'avax',
+    'bnb': 'bnb',
+    'bsc': 'bnb',
+    'base': 'base',
+    'blast': 'blast',
+    'celo': 'celo',
+    'fantom': 'ftm',
+    'gnosis': 'gno',
+    'linea': 'linea',
+    'manta': 'manta',
+    'mantle': 'mnt',
+    'metis': 'metis',
+    'mode': 'mode',
+    'moonbeam': 'glmr',
+    'optimism': 'op',
+    'op': 'op',
+    'polygon': 'matic',
+    'scroll': 'scr',
+    'solana': 'sol',
+    'aurora': 'aurora',
+    'zksync': 'zk',
   };
   
   const normalized = chainName.toLowerCase().replace(/\s+/g, '');
-  return chainMap[normalized] || '/images/chains/default.png';
+  return chainMap[normalized] || normalized;
 };
+
+// Check if chain is U2U (use PNG instead of web3icons)
+const isU2UChain = (chainName: string): boolean => {
+  const normalized = chainName.toLowerCase().replace(/\s+/g, '');
+  return normalized === 'u2u' || normalized === 'u2usolaris';
+};
+
+// Chain icon component
+function ChainIcon({ chain, size = 36 }: { chain: string; size?: number }) {
+  if (isU2UChain(chain)) {
+    return (
+      <Image
+        src="/images/tokens/u2u.png"
+        alt="U2U"
+        width={size}
+        height={size}
+        className="rounded-full object-cover"
+      />
+    );
+  }
+  
+  return (
+    <TokenIcon
+      symbol={getChainTokenSymbol(chain)}
+      variant="branded"
+      size={size}
+    />
+  );
+}
 
 export function AgentCard({ agent, onClick, hasPromptToDeFi = false }: AgentCardProps) {
   const TypeIcon = getTypeIcon(agent.type);
   
-  // Extract first few chains for display
-  const displayChains = agent.supportedChains.slice(0, 3);
-  const extraChains = agent.supportedChains.length - displayChains.length;
+  // Extract first 5 chains for display (group avatar style)
+  const displayChains = agent.supportedChains.slice(0, 5);
+  const extraChains = agent.supportedChains.length - 5;
 
   return (
     <Card 
@@ -114,7 +140,7 @@ export function AgentCard({ agent, onClick, hasPromptToDeFi = false }: AgentCard
       </CardHeader>
 
       <CardContent className="space-y-6">
-        <ul className="space-y-2">
+        <ul className="space-y-2 min-h-[72px]">
           {agent.description.map((feature, index) => (
             <li key={index} className="flex items-start gap-2 text-sm text-muted-foreground">
               <span className="text-muted-foreground mt-0.5">•</span>
@@ -127,21 +153,21 @@ export function AgentCard({ agent, onClick, hasPromptToDeFi = false }: AgentCard
           <div className="pt-4 border-t border-border">
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Supported Chains</span>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center -space-x-2">
                 {displayChains.map((chain, index) => (
-                  <Avatar key={index} className="h-8 w-8 border border-border">
-                    <AvatarImage 
-                      src={getChainLogo(chain)} 
-                      alt={chain}
-                      className="object-cover"
-                    />
-                    <AvatarFallback className="text-xs font-medium bg-secondary">
-                      {chain[0]}
-                    </AvatarFallback>
+                  <Avatar 
+                    key={index} 
+                    className="h-8 w-8 ring-0 flex items-center justify-center bg-secondary"
+                  >
+                    <ChainIcon chain={chain} size={22} />
                   </Avatar>
                 ))}
                 {extraChains > 0 && (
-                  <span className="text-xs text-muted-foreground ml-1">+{extraChains}</span>
+                  <Avatar className="h-8 w-8 z-10">
+                    <AvatarFallback className="text-xs font-medium bg-secondary text-muted-foreground">
+                      +{extraChains}
+                    </AvatarFallback>
+                  </Avatar>
                 )}
               </div>
             </div>
@@ -151,4 +177,3 @@ export function AgentCard({ agent, onClick, hasPromptToDeFi = false }: AgentCard
     </Card>
   );
 }
-

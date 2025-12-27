@@ -1,9 +1,19 @@
 "use client";
 
+import { useEffect } from "react";
 import { Chat } from "@/components/chat";
 import { DataStreamHandler } from "@/components/data-stream-handler";
+import { useNavigation } from "@/context/nav-context";
 import type { ChatMessage } from "@repo/api";
 import type { VisibilityType } from "@/components/visibility-selector";
+
+// Agent display names mapping
+const agentDisplayNames: Record<string, string> = {
+  staking: "Staking Agent",
+  research: "Research Agent",
+  yield: "Yield Agent",
+  bridge: "Bridge Agent",
+};
 
 interface AgentChatClientProps {
   chatId: string;
@@ -24,6 +34,16 @@ export function AgentChatClient({
   agentId,
   autoResume,
 }: AgentChatClientProps) {
+  const { setNavItems } = useNavigation();
+
+  useEffect(() => {
+    const agentName = agentDisplayNames[agentId] || "DeFi Agent";
+    setNavItems({
+      title: agentName,
+      icon: `/agents/${agentId}-agent.svg`,
+    });
+  }, [agentId, setNavItems]);
+
   console.log("[AgentChatClient] Rendering with:", {
     chatId,
     messagesCount: initialMessages.length,

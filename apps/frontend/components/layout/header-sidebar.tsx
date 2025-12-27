@@ -2,15 +2,10 @@
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button-v2";
-import { DropdownMenu } from "@/components/ui/dropdown-menu";
-import {
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  useSidebar,
-} from "@/components/ui/sidebar";
+import { useSidebar } from "@/components/ui/sidebar";
 import { Typography } from "@/components/ui/typography";
 
 export function HeaderSidebar({
@@ -26,37 +21,31 @@ export function HeaderSidebar({
 
   return (
     <div className="relative">
-      <SidebarMenu>
-        <SidebarMenuItem>
-          <DropdownMenu>
-            <SidebarMenuButton
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-              size="lg"
+      <Link
+        href="/agents"
+        className="flex w-full items-center gap-2 p-3 h-12"
+      >
+        <Image
+          alt={header.brand_name}
+          height={45}
+          src={header.logo_url}
+          width={45}
+        />
+        <div className="ml-1 grid flex-1 gap-1 text-left leading-tight group-data-[collapsible=icon]:hidden">
+          <div className="flex items-center gap-2">
+            <Typography className="font-semibold text-xl" gradient>
+              {header.brand_name}
+            </Typography>
+            <Badge
+              className="h-4 rounded-full border-0 bg-gradient-to-b from-[#B5EAFF] to-[#00BFFF] px-1.5 py-0 font-bold text-[8px] text-black"
+              variant="outline"
             >
-              <Image
-                alt={header.brand_name}
-                height={45}
-                src={header.logo_url}
-                width={45}
-              />
-              <div className="ml-1 grid flex-1 gap-1 text-left leading-tight">
-                <div className="flex items-center gap-2">
-                  <Typography className="font-semibold text-xl" gradient>
-                    {header.brand_name}
-                  </Typography>
-                  <Badge
-                    className="h-4 rounded-full border-0 bg-gradient-to-b from-[#B5EAFF] to-[#00BFFF] px-1.5 py-0 font-bold text-[8px] text-black"
-                    variant="outline"
-                  >
-                    TESTNET
-                  </Badge>
-                </div>
-                <Typography className="text-sm">{header.tagline}</Typography>
-              </div>
-            </SidebarMenuButton>
-          </DropdownMenu>
-        </SidebarMenuItem>
-      </SidebarMenu>
+              TESTNET
+            </Badge>
+          </div>
+          <Typography className="text-sm">{header.tagline}</Typography>
+        </div>
+      </Link>
 
       {/* Toggle Button */}
       <Button

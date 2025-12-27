@@ -4,12 +4,14 @@ import { AgentsController } from "./agents.controller";
 import { StakingAgentModule } from "./staking/staking-agent.module";
 import { ResearchAgentModule } from "./research/research-agent.module";
 import { YieldAgentModule } from "./yield/yield-agent.module";
+import { BridgeAgentModule } from "./bridge/bridge-agent.module";
 
 @Module({
   imports: [
     forwardRef(() => StakingAgentModule),
     forwardRef(() => ResearchAgentModule),
     forwardRef(() => YieldAgentModule),
+    forwardRef(() => BridgeAgentModule),
   ],
   providers: [AgentRegistryService],
   exports: [AgentRegistryService],

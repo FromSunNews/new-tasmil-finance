@@ -26,6 +26,7 @@ import { ResearchResult } from "./research-result";
 import { StakingOperationResult } from "./staking-operation-result";
 import { StakingResult } from "./staking-result";
 import { YieldResult } from "./yield-result";
+import { BridgeResult } from "./bridge-result";
 import { Weather } from "./weather";
 
 const PurePreviewMessage = ({
@@ -544,6 +545,45 @@ const PurePreviewMessage = ({
                         output={
                           part.output && !("error" in part.output) ? (
                             <YieldResult
+                              result={part.output}
+                              toolType={type}
+                            />
+                          ) : null
+                        }
+                      />
+                    )}
+                  </ToolContent>
+                </Tool>
+              );
+            }
+
+            // Bridge Tools - Special handling for bridge UI
+            if (
+              type === "tool-getBridgePairs" ||
+              type === "tool-getBridgeQuote" ||
+              type === "tool-bridgeTokens" ||
+              type === "tool-getSupportedChains"
+            ) {
+              const { toolCallId, state } = part;
+
+              return (
+                <Tool
+                  className="w-full max-w-[calc(100%-1rem)] sm:max-w-[500px]"
+                  defaultOpen={false}
+                  key={toolCallId}
+                >
+                  <ToolHeader state={state} type={type} />
+                  <ToolContent>
+                    {state === "output-available" && (
+                      <ToolOutput
+                        errorText={
+                          part.output && "error" in part.output
+                            ? String(part.output.error)
+                            : undefined
+                        }
+                        output={
+                          part.output && !("error" in part.output) ? (
+                            <BridgeResult
                               result={part.output}
                               toolType={type}
                             />

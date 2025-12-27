@@ -82,11 +82,9 @@ export class YieldAgentService implements IAgent {
 
   getDescription(): string[] {
     return [
-      "Discover yield farming opportunities across all chains",
-      "Find top APY pools on Ethereum, Arbitrum, BSC, and more",
-      "Search yields for specific tokens like ETH, USDC, WBTC",
-      "Get safe stablecoin yield recommendations",
-      "View historical APY trends and market statistics",
+      "Discover yield farming across all chains",
+      "Find top APY pools and stablecoin yields",
+      "View historical APY trends and statistics",
     ];
   }
 
@@ -99,7 +97,29 @@ export class YieldAgentService implements IAgent {
   }
 
   getSupportedChains(): string[] {
-    return ["All Chains"];
+    return [
+      "U2U",
+      "Ethereum",
+      "Arbitrum",
+      "Optimism",
+      "Polygon",
+      "BSC",
+      "Avalanche",
+      "Solana",
+      "Base",
+      "zkSync",
+      "Linea",
+      "Scroll",
+      "Mantle",
+      "Manta",
+      "Blast",
+      "Mode",
+      "Fantom",
+      "Gnosis",
+      "Celo",
+      "Moonbeam",
+      "Aurora",
+    ];
   }
 
   getTools(

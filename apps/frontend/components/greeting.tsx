@@ -16,6 +16,10 @@ const agentContent = {
     title: "Your DeFi Yield Hunter",
     subtitle: "Ready to find the best yield opportunities across all chains?"
   },
+  bridge: {
+    title: "Your Cross-Chain Bridge Assistant",
+    subtitle: "Ready to help you bridge tokens between U2U and other chains?"
+  },
   default: {
     title: "Your Intelligent DeFi Assistant",
     subtitle: "How can I help you today?"
@@ -40,6 +44,8 @@ export const Greeting = () => {
         return agentContent.research;
       case "yield":
         return agentContent.yield;
+      case "bridge":
+        return agentContent.bridge;
       default:
         return agentContent.default;
     }

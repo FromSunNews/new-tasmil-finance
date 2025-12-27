@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { HeroSection } from "@/components/agents/hero-section";
 import { FilterBar } from "@/components/agents/filter-bar";
 import { AgentCard } from "@/components/agents/agent-card";
 import { generateUUID } from "@/lib/utils";
 import { useAgentsControllerGetAllAgents } from "@/gen/hooks/agents-hooks";
+import { useNavigation } from "@/context/nav-context";
 import { $ } from "@/lib/kubb-config";
 // Removed unused import
 
@@ -25,6 +26,14 @@ interface AgentsListProps {
 }
 
 export function AgentsList({ initialAgents }: AgentsListProps) {
+  const { setNavItems } = useNavigation();
+  
+  useEffect(() => {
+    setNavItems({
+      title: "Tasmil Agents",
+    });
+  }, [setNavItems]);
+
   const getAllAgentsQuery = useAgentsControllerGetAllAgents({
     ...$,
   });
