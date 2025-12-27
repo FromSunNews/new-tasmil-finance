@@ -4,10 +4,12 @@ import { RainbowKitProvider, type Theme } from "@rainbow-me/rainbowkit";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 import { Toaster } from "sonner";
+import { SWRConfig } from "swr";
 import { WagmiProvider } from "wagmi";
 import { defaultNetwork, wagmiConfig } from "@/config/connectors/wagmi";
 import { NavProvider } from "@/context/nav-context";
 import { WalletProvider } from "@/context/wallet-context";
+import { fetcher } from "@/lib/utils";
 import "@rainbow-me/rainbowkit/styles.css";
 
 // Custom DeFi light theme matching globals.css light mode colors
@@ -190,9 +192,48 @@ export function AppProvider({ children }: PropsWithChildren) {
           modalSize="wide"
           theme={defiDarkTheme}
         >
-          <WalletProvider>
-            <NavProvider>{children}</NavProvider>
-          </WalletProvider>
+          <SWRConfig
+            value={{
+              fetcher,
+              errorRetryCount: 0, // Tắt retry hoàn toàn để tránh spam
+              errorRetryInterval: 5000, // Nếu có retry thì đợi 5s
+              shouldRetryOnError: (error) => {
+                // Không retry bất kỳ lỗi nào để tránh spam
+                return false;
+              },
+              onError: (error, key) => {
+                // Chỉ log errors quan trọng, bỏ qua 404 cho artifact endpoints
+                const isArtifactError = typeof key === 'string' && (
+                  key.includes('artifact') || 
+                  key.includes('visibility') ||
+                  key.includes('metadata-init')
+                );
+                
+                const isAuthError = error?.status === 401 || error?.message?.includes('Unauthorized');
+                
+                // Không log artifact 404s và auth errors
+                if (!isArtifactError && !isAuthError && error?.status !== 404) {
+                  console.error('SWR Error:', { key, error: error?.message || error });
+                }
+              },
+              // Add dedupe interval to prevent duplicate requests
+              dedupingInterval: 5000, // Tăng lên 5s
+              // Add focus revalidation control
+              revalidateOnFocus: false,
+              // Add reconnect revalidation control  
+              revalidateOnReconnect: false,
+              // Add interval revalidation control
+              refreshInterval: 0, // Tắt auto refresh
+              // Add error retry on focus
+              revalidateOnMount: true,
+              // Add fallback data for common endpoints
+              fallbackData: undefined,
+            }}
+          >
+            <WalletProvider>
+              <NavProvider>{children}</NavProvider>
+            </WalletProvider>
+          </SWRConfig>
           <Toaster position="top-right" richColors />
         </RainbowKitProvider>
       </WagmiProvider>

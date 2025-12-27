@@ -141,7 +141,6 @@ export const HeroSection = () => {
                 href={PATHS.DEFI_AGENT}
                 rel="noopener noreferrer"
                 tabIndex={0}
-                target="_blank"
               >
                 <span className="mr-2 flex items-center">
                   <Image
@@ -162,7 +161,6 @@ export const HeroSection = () => {
                 href={PATHS.DEFI_AGENT}
                 rel="noopener noreferrer"
                 tabIndex={0}
-                target="_blank"
               >
                 <Button
                   className="cursor-pointer rounded-lg px-2 font-mono text-base text-black uppercase shadow-[0_0_15px_rgba(181,234,255,0.5)] transition-all duration-300 hover:tracking-wider hover:shadow-[0_0_25px_rgba(181,234,255,0.7)]"
@@ -215,7 +213,6 @@ export const HeroSection = () => {
                   href={PATHS.DEFI_AGENT}
                   rel="noopener noreferrer"
                   tabIndex={0}
-                  target="_blank"
                 >
                   <Button
                     className="cursor-pointer rounded-lg px-2 font-mono text-base text-black uppercase shadow-[0_0_15px_rgba(181,234,255,0.5)] transition-all duration-300 hover:tracking-wider hover:shadow-[0_0_25px_rgba(181,234,255,0.7)]"

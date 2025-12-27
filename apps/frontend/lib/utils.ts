@@ -70,8 +70,9 @@ export const fetcher = async (url: string) => {
   // Get API base URL without /api prefix (Kubb URLs already have /api)
   let API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:9337";
   API_BASE_URL = API_BASE_URL.replace(/\/api$/, '').replace(/\/$/, '');
-  // Kubb-generated URLs already include /api prefix
-  const absoluteUrl = url.startsWith("http") ? url : `${API_BASE_URL}${url}`;
+  
+  // Ensure proper URL formatting - add slash if url doesn't start with one
+  const absoluteUrl = url.startsWith("http") ? url : `${API_BASE_URL}${url.startsWith('/') ? url : '/' + url}`;
   
   // Get auth token from store or localStorage
   let authToken: string | null = null;
@@ -94,19 +95,61 @@ export const fetcher = async (url: string) => {
   if (authToken) {
     headers["Authorization"] = `Bearer ${authToken}`;
   }
-  
-  const response = await fetch(absoluteUrl, {
-    credentials: "include",
-    headers,
-  });
 
-  if (!response.ok) {
-    const { code, cause } = await response.json();
-    const { ChatSDKError } = await import("@repo/api");
-    throw new ChatSDKError(code, cause);
+  try {
+    const response = await fetch(absoluteUrl, {
+      credentials: "include",
+      headers,
+    });
+
+    // Handle 401 errors by logging out to prevent infinite retries
+    if (response.status === 401) {
+      if (typeof window !== 'undefined') {
+        try {
+          const { useAuthStore } = await import('@/store/use-auth');
+          useAuthStore.getState().logout();
+        } catch {
+          // Fallback: clear localStorage
+          localStorage.removeItem('auth_token');
+        }
+      }
+      throw new Error('Unauthorized - logged out');
+    }
+
+    // Handle 404 errors silently for artifact endpoints
+    if (response.status === 404) {
+      const isArtifactEndpoint = url.includes('artifact') || 
+                                url.includes('visibility') || 
+                                url.includes('metadata-init');
+      
+      if (isArtifactEndpoint) {
+        // Return empty data for artifact endpoints that don't exist
+        return null;
+      }
+      
+      throw new Error(`Not found: ${url}`);
+    }
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  } catch (error) {
+    // Only log non-404 artifact errors and non-auth errors
+    if (error instanceof Error) {
+      const isArtifactError = url.includes('artifact') || 
+                             url.includes('visibility') || 
+                             url.includes('metadata-init');
+      const isAuthError = error.message.includes('Unauthorized');
+      const is404Error = error.message.includes('Not found');
+      
+      if (!isArtifactError && !isAuthError && !is404Error) {
+        console.error('Fetcher error:', { url: absoluteUrl, error: error.message });
+      }
+    }
+    throw error;
   }
-
-  return response.json();
 };
 
 export async function fetchWithErrorHandlers(
@@ -140,19 +183,19 @@ export async function fetchWithErrorHandlers(
 }
 
 export function getDocumentTimestampByIndex(
-  document: Document,
+  document: any & { versions?: Array<{ createdAt: Date | string }> },
   index: number
 ): string {
   if (!document.versions || document.versions.length === 0) {
-    return formatISO(document.createdAt);
+    return formatISO(new Date(document.createdAt));
   }
 
   const version = document.versions[index];
   if (!version) {
-    return formatISO(document.createdAt);
+    return formatISO(new Date(document.createdAt));
   }
 
-  return formatISO(version.createdAt);
+  return formatISO(new Date(version.createdAt));
 }
 
 export function sanitizeText(text: string): string {

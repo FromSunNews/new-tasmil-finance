@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSWRConfig } from "swr";
 import { unstable_serialize } from "swr/infinite";
 import { useWallet } from "@/context/wallet-context";
+import { ErrorBoundary } from "@/components/error-boundary";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -311,5 +312,14 @@ export function Chat({
         </AlertDialogContent>
       </AlertDialog>
     </>
+  );
+}
+
+// Wrapped Chat component with ErrorBoundary
+export function ChatWithErrorBoundary(props: Parameters<typeof Chat>[0]) {
+  return (
+    <ErrorBoundary>
+      <Chat {...props} />
+    </ErrorBoundary>
   );
 }
