@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { deleteAllChatsByUserId, getChatsByUserId } from "@repo/db";
+import { deleteAllChatsByUserId, getChatsByUserId } from "../database";
 
 @Injectable()
 export class HistoryService {

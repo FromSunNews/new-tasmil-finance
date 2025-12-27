@@ -13,7 +13,7 @@ import { useWalletStore } from "@/store/use-wallet";
 import { useAuthStore, type AuthUser } from "@/store/use-auth";
 import { toast } from "sonner";
 import { authControllerGetWalletNonce, authControllerWalletLogin } from "@/gen/client";
-import apiClient from "@/lib/api-client";
+import { withAuth } from "@/lib/kubb-config";
 
 interface WalletContextType {
   isConnected: boolean;
@@ -21,7 +21,7 @@ interface WalletContextType {
   isAuthenticating: boolean;
   address: string | null;
   displayAddress: string | null;
-  user: ReturnType<typeof useAuthStore>["user"];
+  user: AuthUser | null;
   connect: () => void;
   disconnect: () => void;
   forceReauth: () => Promise<void>;
@@ -105,10 +105,10 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({
       try {
         // Step 1: Get nonce from backend
         setSigning(false);
-        console.log('Making nonce request to:', apiClient.defaults.baseURL);
+        console.log('Making nonce request to:', process.env.NEXT_PUBLIC_API_URL || "http://localhost:9337");
         const nonceResponse = await authControllerGetWalletNonce(
           { walletAddress },
-          { client: apiClient }
+          { client: withAuth.client.client }
         );
         const { nonce, message } = nonceResponse as { nonce: string; message?: string };
 
@@ -121,13 +121,16 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({
         // Step 3: Send signature to backend for verification
         const loginResponse = await authControllerWalletLogin(
           { walletAddress, signature },
-          { client: apiClient }
-        ) as { access_token: string; user: AuthUser };
+          { client: withAuth.client.client }
+        );
+
+        // Type assertion for the response structure
+        const typedResponse = loginResponse as { access_token: string; user: AuthUser };
 
         // Step 4: Update auth state
         setAuthState({
-          accessToken: loginResponse.access_token,
-          user: loginResponse.user,
+          accessToken: typedResponse.access_token,
+          user: typedResponse.user,
         });
 
         toast.success("Wallet verified successfully!");

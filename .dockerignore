@@ -1,0 +1,48 @@
+# Dependencies
+**/node_modules
+**/.pnpm-store
+
+# Build outputs
+**/dist
+**/.next
+**/.turbo
+**/build
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Environment files (keep .env for docker)
+# **/.env
+**/.env.*
+!**/.env.example
+
+# Test & Coverage
+**/coverage
+**/.nyc_output
+
+# Documentation
+**/README.md
+**/docs
+
+# Frontend (not needed for backend build)
+apps/frontend
+
+# Other
+.DS_Store
+Thumbs.db
+
+# Packages not needed
+packages/db
+packages/api

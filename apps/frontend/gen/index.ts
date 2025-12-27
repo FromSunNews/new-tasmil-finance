@@ -20,7 +20,6 @@ export type { ChatControllerGetStreamSuspenseQueryKey } from './hooks/chat-hooks
 export type { ChatControllerGetStreamQueryKey } from './hooks/chat-hooks/use-chat-controller-get-stream.ts';
 export type { ChatControllerTestSseSuspenseQueryKey } from './hooks/chat-hooks/use-chat-controller-test-sse-suspense.ts';
 export type { ChatControllerTestSseQueryKey } from './hooks/chat-hooks/use-chat-controller-test-sse.ts';
-export type { ChatControllerUpdateChatVisibilityMutationKey } from './hooks/chat-hooks/use-chat-controller-update-chat-visibility.ts';
 export type { DocumentControllerCreateDocumentMutationKey } from './hooks/document-hooks/use-document-controller-create-document.ts';
 export type { DocumentControllerDeleteDocumentMutationKey } from './hooks/document-hooks/use-document-controller-delete-document.ts';
 export type { DocumentControllerGetDocumentSuspenseQueryKey } from './hooks/document-hooks/use-document-controller-get-document-suspense.ts';
@@ -31,15 +30,6 @@ export type { HistoryControllerGetHistorySuspenseQueryKey } from './hooks/histor
 export type { HistoryControllerGetHistoryQueryKey } from './hooks/history-hooks/use-history-controller-get-history.ts';
 export type { AppControllerGetHelloSuspenseQueryKey } from './hooks/hooks/use-app-controller-get-hello-suspense.ts';
 export type { AppControllerGetHelloQueryKey } from './hooks/hooks/use-app-controller-get-hello.ts';
-export type { LinksControllerCreateMutationKey } from './hooks/links-hooks/use-links-controller-create.ts';
-export type { LinksControllerFindAllSuspenseQueryKey } from './hooks/links-hooks/use-links-controller-find-all-suspense.ts';
-export type { LinksControllerFindAllQueryKey } from './hooks/links-hooks/use-links-controller-find-all.ts';
-export type { LinksControllerFindOneSuspenseQueryKey } from './hooks/links-hooks/use-links-controller-find-one-suspense.ts';
-export type { LinksControllerFindOneQueryKey } from './hooks/links-hooks/use-links-controller-find-one.ts';
-export type { LinksControllerRemoveMutationKey } from './hooks/links-hooks/use-links-controller-remove.ts';
-export type { LinksControllerUpdateMutationKey } from './hooks/links-hooks/use-links-controller-update.ts';
-export type { SuggestionsControllerGetSuggestionsSuspenseQueryKey } from './hooks/suggestions-hooks/use-suggestions-controller-get-suggestions-suspense.ts';
-export type { SuggestionsControllerGetSuggestionsQueryKey } from './hooks/suggestions-hooks/use-suggestions-controller-get-suggestions.ts';
 export type { VoteControllerGetVotesSuspenseQueryKey } from './hooks/vote-hooks/use-vote-controller-get-votes-suspense.ts';
 export type { VoteControllerGetVotesQueryKey } from './hooks/vote-hooks/use-vote-controller-get-votes.ts';
 export type { VoteControllerVoteMutationKey } from './hooks/vote-hooks/use-vote-controller-vote.ts';
@@ -142,15 +132,6 @@ export type {
   ChatControllerTestSseQueryResponse,
   ChatControllerTestSseQuery,
 } from './types/chat-controller-test-sse.ts';
-export type {
-  ChatControllerUpdateChatVisibilityPathParams,
-  ChatControllerUpdateChatVisibility200,
-  ChatControllerUpdateChatVisibility401,
-  ChatControllerUpdateChatVisibilityMutationRequestVisibilityEnumKey,
-  ChatControllerUpdateChatVisibilityMutationRequest,
-  ChatControllerUpdateChatVisibilityMutationResponse,
-  ChatControllerUpdateChatVisibilityMutation,
-} from './types/chat-controller-update-chat-visibility.ts';
 export type { CreateChatDto } from './types/create-chat-dto.ts';
 export type {
   DocumentControllerCreateDocumentQueryParams,
@@ -200,48 +181,6 @@ export type {
   HistoryControllerGetHistoryQuery,
 } from './types/history-controller-get-history.ts';
 export type {
-  LinksControllerCreate201,
-  LinksControllerCreateMutationRequest,
-  LinksControllerCreateMutationResponse,
-  LinksControllerCreateMutation,
-} from './types/links-controller-create.ts';
-export type {
-  LinksControllerFindAll200,
-  LinksControllerFindAllQueryResponse,
-  LinksControllerFindAllQuery,
-} from './types/links-controller-find-all.ts';
-export type {
-  LinksControllerFindOnePathParams,
-  LinksControllerFindOne200,
-  LinksControllerFindOne404,
-  LinksControllerFindOneQueryResponse,
-  LinksControllerFindOneQuery,
-} from './types/links-controller-find-one.ts';
-export type {
-  LinksControllerRemovePathParams,
-  LinksControllerRemove200,
-  LinksControllerRemove404,
-  LinksControllerRemoveMutationResponse,
-  LinksControllerRemoveMutation,
-} from './types/links-controller-remove.ts';
-export type {
-  LinksControllerUpdatePathParams,
-  LinksControllerUpdate200,
-  LinksControllerUpdate404,
-  LinksControllerUpdateMutationRequest,
-  LinksControllerUpdateMutationResponse,
-  LinksControllerUpdateMutation,
-} from './types/links-controller-update.ts';
-export type { _Object } from './types/object.ts';
-export type {
-  SuggestionsControllerGetSuggestionsQueryParams,
-  SuggestionsControllerGetSuggestions200,
-  SuggestionsControllerGetSuggestions400,
-  SuggestionsControllerGetSuggestions401,
-  SuggestionsControllerGetSuggestionsQueryResponse,
-  SuggestionsControllerGetSuggestionsQuery,
-} from './types/suggestions-controller-get-suggestions.ts';
-export type {
   VoteControllerGetVotesQueryParams,
   VoteControllerGetVotes200,
   VoteControllerGetVotes400,
@@ -274,19 +213,12 @@ export { chatControllerDeleteTrailingMessages } from './client/chat-controller-d
 export { chatControllerGetChat } from './client/chat-controller-get-chat.ts';
 export { chatControllerGetStream } from './client/chat-controller-get-stream.ts';
 export { chatControllerTestSse } from './client/chat-controller-test-sse.ts';
-export { chatControllerUpdateChatVisibility } from './client/chat-controller-update-chat-visibility.ts';
 export { documentControllerCreateDocument } from './client/document-controller-create-document.ts';
 export { documentControllerDeleteDocument } from './client/document-controller-delete-document.ts';
 export { documentControllerGetDocument } from './client/document-controller-get-document.ts';
 export { filesControllerUploadFile } from './client/files-controller-upload-file.ts';
 export { historyControllerDeleteAllHistory } from './client/history-controller-delete-all-history.ts';
 export { historyControllerGetHistory } from './client/history-controller-get-history.ts';
-export { linksControllerCreate } from './client/links-controller-create.ts';
-export { linksControllerFindAll } from './client/links-controller-find-all.ts';
-export { linksControllerFindOne } from './client/links-controller-find-one.ts';
-export { linksControllerRemove } from './client/links-controller-remove.ts';
-export { linksControllerUpdate } from './client/links-controller-update.ts';
-export { suggestionsControllerGetSuggestions } from './client/suggestions-controller-get-suggestions.ts';
 export { voteControllerGetVotes } from './client/vote-controller-get-votes.ts';
 export { voteControllerVote } from './client/vote-controller-vote.ts';
 export { agentsControllerGetAgentSuspenseQueryKey } from './hooks/agents-hooks/use-agents-controller-get-agent-suspense.ts';
@@ -355,9 +287,6 @@ export { useChatControllerTestSseSuspense } from './hooks/chat-hooks/use-chat-co
 export { chatControllerTestSseQueryKey } from './hooks/chat-hooks/use-chat-controller-test-sse.ts';
 export { chatControllerTestSseQueryOptions } from './hooks/chat-hooks/use-chat-controller-test-sse.ts';
 export { useChatControllerTestSse } from './hooks/chat-hooks/use-chat-controller-test-sse.ts';
-export { chatControllerUpdateChatVisibilityMutationKey } from './hooks/chat-hooks/use-chat-controller-update-chat-visibility.ts';
-export { chatControllerUpdateChatVisibilityMutationOptions } from './hooks/chat-hooks/use-chat-controller-update-chat-visibility.ts';
-export { useChatControllerUpdateChatVisibility } from './hooks/chat-hooks/use-chat-controller-update-chat-visibility.ts';
 export { documentControllerCreateDocumentMutationKey } from './hooks/document-hooks/use-document-controller-create-document.ts';
 export { documentControllerCreateDocumentMutationOptions } from './hooks/document-hooks/use-document-controller-create-document.ts';
 export { useDocumentControllerCreateDocument } from './hooks/document-hooks/use-document-controller-create-document.ts';
@@ -388,33 +317,6 @@ export { useAppControllerGetHelloSuspense } from './hooks/hooks/use-app-controll
 export { appControllerGetHelloQueryKey } from './hooks/hooks/use-app-controller-get-hello.ts';
 export { appControllerGetHelloQueryOptions } from './hooks/hooks/use-app-controller-get-hello.ts';
 export { useAppControllerGetHello } from './hooks/hooks/use-app-controller-get-hello.ts';
-export { linksControllerCreateMutationKey } from './hooks/links-hooks/use-links-controller-create.ts';
-export { linksControllerCreateMutationOptions } from './hooks/links-hooks/use-links-controller-create.ts';
-export { useLinksControllerCreate } from './hooks/links-hooks/use-links-controller-create.ts';
-export { linksControllerFindAllSuspenseQueryKey } from './hooks/links-hooks/use-links-controller-find-all-suspense.ts';
-export { linksControllerFindAllSuspenseQueryOptions } from './hooks/links-hooks/use-links-controller-find-all-suspense.ts';
-export { useLinksControllerFindAllSuspense } from './hooks/links-hooks/use-links-controller-find-all-suspense.ts';
-export { linksControllerFindAllQueryKey } from './hooks/links-hooks/use-links-controller-find-all.ts';
-export { linksControllerFindAllQueryOptions } from './hooks/links-hooks/use-links-controller-find-all.ts';
-export { useLinksControllerFindAll } from './hooks/links-hooks/use-links-controller-find-all.ts';
-export { linksControllerFindOneSuspenseQueryKey } from './hooks/links-hooks/use-links-controller-find-one-suspense.ts';
-export { linksControllerFindOneSuspenseQueryOptions } from './hooks/links-hooks/use-links-controller-find-one-suspense.ts';
-export { useLinksControllerFindOneSuspense } from './hooks/links-hooks/use-links-controller-find-one-suspense.ts';
-export { linksControllerFindOneQueryKey } from './hooks/links-hooks/use-links-controller-find-one.ts';
-export { linksControllerFindOneQueryOptions } from './hooks/links-hooks/use-links-controller-find-one.ts';
-export { useLinksControllerFindOne } from './hooks/links-hooks/use-links-controller-find-one.ts';
-export { linksControllerRemoveMutationKey } from './hooks/links-hooks/use-links-controller-remove.ts';
-export { linksControllerRemoveMutationOptions } from './hooks/links-hooks/use-links-controller-remove.ts';
-export { useLinksControllerRemove } from './hooks/links-hooks/use-links-controller-remove.ts';
-export { linksControllerUpdateMutationKey } from './hooks/links-hooks/use-links-controller-update.ts';
-export { linksControllerUpdateMutationOptions } from './hooks/links-hooks/use-links-controller-update.ts';
-export { useLinksControllerUpdate } from './hooks/links-hooks/use-links-controller-update.ts';
-export { suggestionsControllerGetSuggestionsSuspenseQueryKey } from './hooks/suggestions-hooks/use-suggestions-controller-get-suggestions-suspense.ts';
-export { suggestionsControllerGetSuggestionsSuspenseQueryOptions } from './hooks/suggestions-hooks/use-suggestions-controller-get-suggestions-suspense.ts';
-export { useSuggestionsControllerGetSuggestionsSuspense } from './hooks/suggestions-hooks/use-suggestions-controller-get-suggestions-suspense.ts';
-export { suggestionsControllerGetSuggestionsQueryKey } from './hooks/suggestions-hooks/use-suggestions-controller-get-suggestions.ts';
-export { suggestionsControllerGetSuggestionsQueryOptions } from './hooks/suggestions-hooks/use-suggestions-controller-get-suggestions.ts';
-export { useSuggestionsControllerGetSuggestions } from './hooks/suggestions-hooks/use-suggestions-controller-get-suggestions.ts';
 export { voteControllerGetVotesSuspenseQueryKey } from './hooks/vote-hooks/use-vote-controller-get-votes-suspense.ts';
 export { voteControllerGetVotesSuspenseQueryOptions } from './hooks/vote-hooks/use-vote-controller-get-votes-suspense.ts';
 export { useVoteControllerGetVotesSuspense } from './hooks/vote-hooks/use-vote-controller-get-votes-suspense.ts';
@@ -424,6 +326,3 @@ export { useVoteControllerGetVotes } from './hooks/vote-hooks/use-vote-controlle
 export { voteControllerVoteMutationKey } from './hooks/vote-hooks/use-vote-controller-vote.ts';
 export { voteControllerVoteMutationOptions } from './hooks/vote-hooks/use-vote-controller-vote.ts';
 export { useVoteControllerVote } from './hooks/vote-hooks/use-vote-controller-vote.ts';
-export { chatControllerUpdateChatVisibilityMutationRequestVisibilityEnum } from './types/chat-controller-update-chat-visibility.ts';
-export { documentControllerCreateDocumentMutationRequestKindEnum } from './types/document-controller-create-document.ts';
-export { voteControllerVoteMutationRequestTypeEnum } from './types/vote-controller-vote.ts';

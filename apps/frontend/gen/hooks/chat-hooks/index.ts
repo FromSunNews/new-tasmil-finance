@@ -7,7 +7,6 @@ export type { ChatControllerGetStreamSuspenseQueryKey } from './use-chat-control
 export type { ChatControllerGetStreamQueryKey } from './use-chat-controller-get-stream.ts';
 export type { ChatControllerTestSseSuspenseQueryKey } from './use-chat-controller-test-sse-suspense.ts';
 export type { ChatControllerTestSseQueryKey } from './use-chat-controller-test-sse.ts';
-export type { ChatControllerUpdateChatVisibilityMutationKey } from './use-chat-controller-update-chat-visibility.ts';
 export { chatControllerCreateChatMutationKey } from './use-chat-controller-create-chat.ts';
 export { chatControllerCreateChatMutationOptions } from './use-chat-controller-create-chat.ts';
 export { useChatControllerCreateChat } from './use-chat-controller-create-chat.ts';
@@ -35,6 +34,3 @@ export { useChatControllerTestSseSuspense } from './use-chat-controller-test-sse
 export { chatControllerTestSseQueryKey } from './use-chat-controller-test-sse.ts';
 export { chatControllerTestSseQueryOptions } from './use-chat-controller-test-sse.ts';
 export { useChatControllerTestSse } from './use-chat-controller-test-sse.ts';
-export { chatControllerUpdateChatVisibilityMutationKey } from './use-chat-controller-update-chat-visibility.ts';
-export { chatControllerUpdateChatVisibilityMutationOptions } from './use-chat-controller-update-chat-visibility.ts';
-export { useChatControllerUpdateChatVisibility } from './use-chat-controller-update-chat-visibility.ts';

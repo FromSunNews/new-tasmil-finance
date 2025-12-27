@@ -13,7 +13,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiBody } 
 import { Request } from "express";
 import { VoteService } from "./vote.service";
 import { JwtAuthGuard } from "../auth/guards/auth.guard";
-import { ChatSDKError } from "@repo/api";
+import { ChatSDKError } from "../common/errors";
 import type { JwtPayload } from "../auth/auth.service";
 
 @ApiTags("vote")

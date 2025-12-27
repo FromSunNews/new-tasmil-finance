@@ -3,7 +3,7 @@
 import { useChat as useAiChat } from "@ai-sdk/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import type { ChatMessage } from "@repo/api";
+import type { ChatMessage } from "@/lib/types";
 import { generateUUID } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-client";
 
@@ -44,7 +44,7 @@ export function useChatApi({
       const lastMessage = currentMessages.at(-1);
       const shouldContinue =
         lastMessage?.parts?.some(
-          (part) =>
+          (part: any) =>
             part.type === "tool-call" &&
             part.toolCallId &&
             part.result === undefined &&
@@ -57,8 +57,7 @@ export function useChatApi({
     },
     transport: {
       // Use custom transport for SSE
-      streamProtocol: "sse",
-      send: async ({ body }) => {
+      send: async ({ body }: { body: any }) => {
         const requestBody = typeof body === "string" ? JSON.parse(body) : body;
         const API_BASE_URL = getApiBaseUrl();
         const { accessToken } = (await import('@/store/use-auth')).useAuthStore.getState();
@@ -91,7 +90,7 @@ export function useChatApi({
 
         return response.body;
       },
-    },
+    } as any,
   });
 
   const sendMessage = async (message: ChatMessage) => {

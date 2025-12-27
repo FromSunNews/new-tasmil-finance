@@ -28,7 +28,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Typography } from "@/components/ui/typography";
-import GridDistortion from "@/components/ui/grid-distortion";
 import { cn } from "@/lib/utils";
 import Balatro from "../ui/balatro";
 
@@ -169,7 +168,6 @@ export function FooterSidebarSection() {
               return isOpen ? (
                 <div className="flex w-full flex-col gap-2 px-2">
 
-                  {/* Quest Card with GridDistortion */}
                   <a
                     href="https://quest.tasmil-finance.xyz"
                     target="_blank"
@@ -177,16 +175,7 @@ export function FooterSidebarSection() {
                     className="block"
                   >
                     <div className="relative h-32 overflow-hidden rounded-xl border border-border bg-zinc-900 transition-all hover:border-primary/50 hover:shadow-lg hover:shadow-primary/20 cursor-pointer group">
-                      {/* GridDistortion Background */}
                       <div className="absolute inset-0">
-                        {/* <GridDistortion
-                          imageSrc="https://picsum.photos/1920/1080?grayscale"
-                          grid={60}
-                          mouse={0.2}
-                          strength={0.15}
-                          relaxation={0.9}
-                          className="w-full h-full"
-                        /> */}
                         <Balatro
                           isRotate={false}
                           mouseInteraction={true}

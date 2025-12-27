@@ -1,6 +1,6 @@
 import type { UIMessageStreamWriter } from "ai";
-import type { ChatMessage } from "@repo/api";
-import { saveDocument, getDocumentById, type Document } from "@repo/db";
+import type { ChatMessage } from "../../common/types";
+import { saveDocument, getDocumentById, type Document } from "../../database";
 import type { JwtPayload } from "../../auth/auth.service";
 
 export type ArtifactKind = "text" | "code" | "sheet";

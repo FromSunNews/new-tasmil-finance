@@ -1,7 +1,8 @@
 import { Controller, Get, Param, HttpException, HttpStatus } from "@nestjs/common";
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from "@nestjs/swagger";
 import { AgentRegistryService } from "./agent-registry.service";
-import { ChatSDKError } from "@repo/api";
+import { ChatSDKError } from "../common/errors";
+import { GetAgentParamsDto } from "./dto/get-agent.dto";
 
 @ApiTags("agents")
 @Controller("agents")
@@ -25,11 +26,11 @@ export class AgentsController {
 
   @Get(":id")
   @ApiOperation({ summary: "Get agent by ID" })
-  @ApiParam({ name: "id", type: String })
+  @ApiParam({ name: "id", type: String, description: "Agent ID" })
   @ApiResponse({ status: 200, description: "Agent retrieved" })
   @ApiResponse({ status: 404, description: "Agent not found" })
-  getAgent(@Param("id") id: string) {
-    const agent = this.agentRegistry.getAgent(id);
+  getAgent(@Param() params: GetAgentParamsDto) {
+    const agent = this.agentRegistry.getAgent(params.id);
     if (!agent) {
       throw new HttpException(
         new ChatSDKError("not_found:agent"),

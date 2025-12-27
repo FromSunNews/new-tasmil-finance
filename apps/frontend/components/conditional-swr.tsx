@@ -1,10 +1,10 @@
 "use client";
 
-import useSWR, { SWRConfiguration } from 'swr';
+import useSWR, { type SWRConfiguration, type Key, type Fetcher } from 'swr';
 
 interface ConditionalSWRProps<T> {
   key: string | null;
-  fetcher?: (key: string) => Promise<T>;
+  fetcher?: Fetcher<T, string>;
   config?: SWRConfiguration<T>;
   condition?: boolean;
   fallbackData?: T;
@@ -25,7 +25,7 @@ export function useConditionalSWR<T>({
   
   return useSWR<T>(
     shouldFetch ? key : null,
-    fetcher,
+    fetcher ?? null,
     {
       ...config,
       fallbackData,

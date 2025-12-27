@@ -1,12 +1,17 @@
 "use server";
 
-import { generateText, type UIMessage } from "ai";
+import { generateText, type UIMessage, type LanguageModel } from "ai";
 import { cookies } from "next/headers";
-import { chatControllerUpdateChatVisibility } from "@/gen/client";
-import { withAuth } from "@/lib/kubb-config";
-import type { VisibilityType } from "@/components/visibility-selector";
-import { titlePrompt } from "@/lib/ai/prompts";
-import { getTitleModel } from "@/lib/ai/providers";
+import { titlePrompt } from "@/lib/models";
+import { createOpenAI } from "@ai-sdk/openai";
+
+// Get title model for generating chat titles
+function getTitleModel(): LanguageModel {
+  const openai = createOpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+  return openai("gpt-4o-mini") as unknown as LanguageModel;
+}
 
 export async function saveChatModelAsCookie(model: string) {
   const cookieStore = await cookies();
@@ -41,28 +46,11 @@ export async function generateTitleFromUserMessage({
 export async function deleteTrailingMessages({ id }: { id: string }) {
   try {
     const { chatControllerDeleteTrailingMessages } = await import('@/gen/client');
-    const { withAuth } = await import('@/lib/kubb-config');
+    const { getServerWithAuth } = await import('@/lib/server-api-client');
+    const withAuth = await getServerWithAuth();
     await chatControllerDeleteTrailingMessages({ id } as any, withAuth);
   } catch (error) {
     console.error("Failed to delete trailing messages:", error);
-    throw error;
-  }
-}
-
-export async function updateChatVisibility({
-  chatId,
-  visibility,
-}: {
-  chatId: string;
-  visibility: VisibilityType;
-}) {
-  try {
-    await chatControllerUpdateChatVisibility(
-      { id: chatId, visibility },
-      withAuth
-    );
-  } catch (error) {
-    console.error("Failed to update chat visibility:", error);
     throw error;
   }
 }

@@ -11,8 +11,8 @@ import {
   type User,
   getDb,
   user,
-} from "@repo/db";
-import { generateDummyPassword } from "@repo/db";
+  generateDummyPassword,
+} from "../database";
 import { RedisService } from "../infra/redis/redis.service";
 import { WalletLoginDto } from "./dto/wallet-login.dto";
 
@@ -247,7 +247,7 @@ By signing, you agree to our Terms of Service.`;
       .values({
         email: email,
         password: null, // No password for wallet users
-      })
+      } as any)
       .returning();
 
     if (!newUser) {

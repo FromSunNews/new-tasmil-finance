@@ -52,9 +52,42 @@ export function MarketOverview() {
     };
 
     fetchMarketData();
-    // Set up polling every minute
-    const interval = setInterval(fetchMarketData, 60_000);
-    return () => clearInterval(interval);
+    // Set up adaptive polling - start with 2 minutes, increase if page not visible
+    let pollInterval = 120_000; // 2 minutes
+    
+    const adaptivePolling = () => {
+      // Increase interval if page is not visible
+      if (document.hidden) {
+        pollInterval = Math.min(pollInterval * 1.5, 300_000); // Max 5 minutes
+      } else {
+        pollInterval = 120_000; // Reset to 2 minutes when visible
+      }
+      return pollInterval;
+    };
+    
+    const scheduleNext = () => {
+      const timeout = setTimeout(() => {
+        fetchMarketData();
+        scheduleNext();
+      }, adaptivePolling());
+      return timeout;
+    };
+    
+    const timeout = scheduleNext();
+    
+    // Handle visibility change
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchMarketData(); // Immediate fetch when page becomes visible
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      clearTimeout(timeout);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   const selectedTokenData = tokens.find((t) => t.symbol === selectedToken);

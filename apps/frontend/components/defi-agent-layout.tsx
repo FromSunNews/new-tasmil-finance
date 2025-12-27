@@ -17,8 +17,9 @@ type DefiAgentLayoutProps = {
 };
 
 export function DefiAgentLayout({ children, user: _user }: DefiAgentLayoutProps) {
-  const { isOpen: isSidebarOpen, toggle: toggleSidebar } =
-    useDefiAgentSidebar();
+  const sidebarContext = useDefiAgentSidebar();
+  const isSidebarOpen = sidebarContext?.isOpen ?? false;
+  const toggleSidebar = sidebarContext?.toggle ?? (() => {});
   const pathname = usePathname();
   
   // Get user from wallet context instead of prop

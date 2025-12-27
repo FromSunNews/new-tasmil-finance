@@ -3,7 +3,9 @@
  * Do not edit manually.
  */
 
-export interface AgentsControllerGetAgentPathParams {}
+export interface AgentsControllerGetAgentPathParams {
+  id: string;
+}
 
 /**
  * @description Agent retrieved

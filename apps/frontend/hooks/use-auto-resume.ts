@@ -3,7 +3,7 @@
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { useEffect } from "react";
 import { useDataStream } from "@/components/data-stream-provider";
-import type { ChatMessage } from "@repo/api";
+import type { ChatMessage } from "@/lib/types";
 
 export type UseAutoResumeParams = {
   autoResume: boolean;
@@ -45,8 +45,8 @@ export function useAutoResume({
 
     const dataPart = dataStream[0];
 
-    if (dataPart.type === "data-appendMessage") {
-      const message = JSON.parse(dataPart.data);
+    if (dataPart && dataPart.type === "data-appendMessage") {
+      const message = JSON.parse(dataPart.data || "{}");
       setMessages([...initialMessages, message]);
     }
   }, [dataStream, initialMessages, setMessages]);

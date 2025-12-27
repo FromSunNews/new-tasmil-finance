@@ -1,6 +1,6 @@
 import { Injectable, HttpException, HttpStatus } from "@nestjs/common";
-import { getChatById, getVotesByChatId, voteMessage } from "@repo/db";
-import { ChatSDKError } from "@repo/api";
+import { getChatById, getVotesByChatId, voteMessage } from "../database";
+import { ChatSDKError } from "../common/errors";
 
 @Injectable()
 export class VoteService {

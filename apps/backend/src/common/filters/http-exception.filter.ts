@@ -6,7 +6,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { Response } from 'express';
-import { ChatSDKError } from '@repo/api';
+import { ChatSDKError } from '../errors';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {

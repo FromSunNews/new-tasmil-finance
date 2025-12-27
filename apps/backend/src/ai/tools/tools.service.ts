@@ -1,15 +1,15 @@
 import { Injectable } from "@nestjs/common";
 import { tool, type UIMessageStreamWriter, Output, streamText } from "ai";
 import { z } from "zod";
-import type { ChatMessage } from "@repo/api";
+import type { ChatMessage } from "../../common/types";
 import type { JwtPayload } from "../../auth/auth.service";
 import {
   getDocumentById,
   saveDocument,
   saveSuggestions,
   type Suggestion,
-} from "@repo/db";
-import { generateUUID } from "@repo/db";
+  generateUUID,
+} from "../../database";
 import { AiService } from "../ai.service";
 import { createDocumentHandlers, type ArtifactKind } from "../artifacts";
 

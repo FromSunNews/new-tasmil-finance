@@ -3,7 +3,9 @@
  * Do not edit manually.
  */
 
-export interface ChatControllerDeleteTrailingMessagesPathParams {}
+export interface ChatControllerDeleteTrailingMessagesPathParams {
+  id: string;
+}
 
 /**
  * @description Messages deleted

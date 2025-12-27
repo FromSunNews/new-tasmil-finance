@@ -2,7 +2,7 @@ import { Injectable } from "@nestjs/common";
 import type { IAgent } from "../interfaces/agent.interface";
 import type { JwtPayload } from "../../auth/auth.service";
 import type { UIMessageStreamWriter } from "ai";
-import type { ChatMessage } from "@repo/api";
+import type { ChatMessage } from "../../common/types";
 import { YieldQueryService } from "../../ai/tools/yield/yield-query.service";
 
 const yieldPrompt = `You are a professional DeFi yield analyst AI assistant. Your role is to help users discover, analyze, and compare yield farming opportunities across multiple blockchains using data from DeFiLlama.

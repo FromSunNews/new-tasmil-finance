@@ -4,7 +4,7 @@ import { Throttle } from "@nestjs/throttler";
 import { Request } from "express";
 import { HistoryService } from "./history.service";
 import { JwtAuthGuard } from "../auth/guards/auth.guard";
-import { ChatSDKError } from "@repo/api";
+import { ChatSDKError } from "../common/errors";
 import type { JwtPayload } from "../auth/auth.service";
 
 const isProd = process.env.NODE_ENV === 'production';

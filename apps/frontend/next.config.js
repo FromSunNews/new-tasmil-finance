@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   allowedDevOrigins: ['http://localhost:3000'],
+  serverExternalPackages: ['pino', 'thread-stream', 'pino-pretty'],
   images: {
     remotePatterns: [
       {
@@ -14,26 +15,13 @@ const nextConfig = {
     ],
   },
   webpack: (config, { isServer }) => {
-    // Ignore backend-only dependencies that shouldn't be bundled in frontend
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
-        'class-transformer': false,
-        '@nestjs/common': false,
-        '@nestjs/mapped-types': false,
+        '@react-native-async-storage/async-storage': false,
+        'pino-pretty': false,
       };
     }
-    
-    // Ignore these packages during bundling
-    config.externals = config.externals || [];
-    if (!isServer) {
-      config.externals.push({
-        'class-transformer': 'commonjs class-transformer',
-        '@nestjs/common': 'commonjs @nestjs/common',
-        '@nestjs/mapped-types': 'commonjs @nestjs/mapped-types',
-      });
-    }
-    
     return config;
   },
 };

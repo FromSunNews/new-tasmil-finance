@@ -22,19 +22,19 @@ export const BenefitSection = () => {
     const observer = new IntersectionObserver(
       (entries) => {
         const [entry] = entries;
-        if (entry.isIntersecting) {
+        if (entry?.isIntersecting) {
           setIsLoaded(true);
           // Staggered card loading animation
           const timer1 = setTimeout(() => {
-            setCardsLoaded((prev) => [true, prev[1], prev[2]]);
+            setCardsLoaded((prev) => [true, prev[1] ?? false, prev[2] ?? false]);
           }, 400);
 
           const timer2 = setTimeout(() => {
-            setCardsLoaded((prev) => [prev[0], true, prev[2]]);
+            setCardsLoaded((prev) => [prev[0] ?? false, true, prev[2] ?? false]);
           }, 800);
 
           const timer3 = setTimeout(() => {
-            setCardsLoaded((prev) => [prev[0], prev[1], true]);
+            setCardsLoaded((prev) => [prev[0] ?? false, prev[1] ?? false, true]);
           }, 1200);
 
           return () => {

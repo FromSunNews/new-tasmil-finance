@@ -23,12 +23,11 @@ import {
   SidebarMenu,
   useSidebar,
 } from "@/components/ui/sidebar";
-import type { Chat } from "@/lib/db/schema";
+import type { Chat } from "@/lib/types";
 import { fetcher } from "@/lib/utils";
 import { LoaderIcon } from "./icons";
 import { ChatItem } from "./sidebar-history-item";
 import { chatControllerDeleteChat } from "@/gen/client";
-import { withAuth } from "@/lib/kubb-config";
 
 type GroupedChats = {
   today: Chat[];
@@ -145,7 +144,8 @@ export function SidebarHistory({ user, agentId }: { user: User | undefined; agen
 
     setShowDeleteDialog(false);
 
-    const deletePromise = chatControllerDeleteChat({ id: chatToDelete! }, withAuth);
+    const { kubbClient } = await import('@/lib/api-client');
+    const deletePromise = chatControllerDeleteChat({ id: chatToDelete! }, kubbClient);
 
     toast.promise(deletePromise, {
       loading: "Deleting chat...",

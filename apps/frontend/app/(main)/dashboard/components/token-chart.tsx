@@ -157,12 +157,12 @@ export function TokenChart({
                   if (active && payload && payload.length) {
                     return (
                       <div className="rounded-lg border border-slate-700/50 bg-slate-800/95 p-4 shadow-xl backdrop-blur-sm">
-                        <p className="font-semibold text-lg text-white">
-                          ${formatNumber(payload[0].value as number)}
+                      <p className="font-semibold text-lg text-white">
+                          ${formatNumber(payload[0]?.value as number)}
                         </p>
                         <p className="text-slate-400 text-sm">
                           {new Date(
-                            payload[0].payload.timestamp
+                            payload[0]?.payload.timestamp
                           ).toLocaleString()}
                         </p>
                       </div>

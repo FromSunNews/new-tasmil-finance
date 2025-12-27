@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAccount, useBalance, useChainId } from "wagmi";
 import { ethers } from "ethers";
-import type { TokenData, PortfolioStats, RiskProfile } from "@/types/portfolio";
+import type { TokenData, PortfolioStats, RiskProfile } from "../types/portfolio";
 import SFC_ABI from "@/config/contracts/abi/SFC-json.json";
 import { fetchTokenPrices } from "@/lib/price-service";
 import {
@@ -124,8 +124,8 @@ export const usePortfolio = () => {
       // Try validators 1-10 (common validator IDs)
       for (let validatorID = 1; validatorID <= 10; validatorID++) {
         try {
-          const stake = await contract.getStake(walletAddress, BigInt(validatorID));
-          const rewards = await contract.pendingRewards(walletAddress, BigInt(validatorID));
+          const stake = contract.getStake ? await contract.getStake(walletAddress, BigInt(validatorID)) : BigInt(0);
+          const rewards = contract.pendingRewards ? await contract.pendingRewards(walletAddress, BigInt(validatorID)) : BigInt(0);
 
           if (stake > 0) {
             totalStaked += stake;
@@ -304,15 +304,45 @@ export const usePortfolio = () => {
     }
   }, [address, isConnected, nativeBalance, chainId, fetchStakingData]);
 
-  // Fetch prices periodically (every 60 seconds)
+  // Fetch prices with adaptive polling
   useEffect(() => {
     if (!isConnected || !address) return;
 
-    const interval = setInterval(() => {
-      fetchPortfolioData();
-    }, 60000); // Refresh every 60 seconds
+    let pollInterval = 120000; // Start with 2 minutes
+    let timeoutId: NodeJS.Timeout;
+    
+    const adaptivePolling = () => {
+      // Increase interval if page is not visible or user inactive
+      if (document.hidden) {
+        pollInterval = Math.min(pollInterval * 1.5, 300000); // Max 5 minutes
+      } else {
+        pollInterval = 120000; // Reset to 2 minutes when visible
+      }
+      return pollInterval;
+    };
+    
+    const scheduleNext = () => {
+      timeoutId = setTimeout(() => {
+        fetchPortfolioData();
+        scheduleNext();
+      }, adaptivePolling());
+    };
+    
+    scheduleNext();
+    
+    // Handle visibility change for immediate refresh
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchPortfolioData();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(timeoutId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [isConnected, address, fetchPortfolioData]);
 
   // Auto-fetch on wallet connection or balance change

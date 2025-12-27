@@ -14,8 +14,8 @@ import {
   createResumableStreamContext,
   type ResumableStreamContext,
 } from "resumable-stream";
-import type { ChatMessage } from "@repo/api";
-import { ChatSDKError } from "@repo/api";
+import type { ChatMessage, CustomUIDataTypes, ChatTools } from "../common/types";
+import { ChatSDKError } from "../common/errors";
 import {
   createStreamId,
   deleteChatById,
@@ -32,10 +32,9 @@ import {
   updateMessage,
   type DBMessage,
   generateUUID,
-} from "@repo/db";
+} from "../database";
 import { formatISO } from "date-fns";
 import type { UIMessagePart } from "ai";
-import type { CustomUIDataTypes, ChatTools } from "@repo/api";
 import { AiService } from "../ai/ai.service";
 import { ToolsService } from "../ai/tools/tools.service";
 import { systemPrompt, titlePrompt } from "../ai/prompts";
@@ -782,30 +781,6 @@ export class ChatService {
       chatId: message.chatId,
       timestamp: message.createdAt,
     });
-  }
-
-  async updateChatVisibility(
-    chatId: string,
-    visibility: "private" | "public",
-    userId: string
-  ) {
-    const chat = await getChatById({ id: chatId });
-
-    if (!chat) {
-      throw new HttpException(
-        new ChatSDKError("not_found:chat"),
-        HttpStatus.NOT_FOUND
-      );
-    }
-
-    if (chat.userId !== userId) {
-      throw new HttpException(
-        new ChatSDKError("forbidden:chat"),
-        HttpStatus.FORBIDDEN
-      );
-    }
-
-    await updateChatVisibilityById({ chatId, visibility });
   }
 }
 

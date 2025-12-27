@@ -2,7 +2,7 @@ import { Injectable } from "@nestjs/common";
 import type { IAgent } from "../interfaces/agent.interface";
 import type { JwtPayload } from "../../auth/auth.service";
 import type { UIMessageStreamWriter } from "ai";
-import type { ChatMessage } from "@repo/api";
+import type { ChatMessage } from "../../common/types";
 import { StakingQueryService } from "../../ai/tools/staking/staking-query.service";
 import { StakingOperationsService } from "../../ai/tools/staking/staking-operations.service";
 import { stakingPrompt } from "../../ai/prompts";

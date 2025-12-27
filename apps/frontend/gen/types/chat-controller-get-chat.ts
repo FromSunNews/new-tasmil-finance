@@ -3,7 +3,9 @@
  * Do not edit manually.
  */
 
-export interface ChatControllerGetChatPathParams {}
+export interface ChatControllerGetChatPathParams {
+  id: string;
+}
 
 /**
  * @description Chat retrieved

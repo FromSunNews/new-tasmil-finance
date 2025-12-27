@@ -4,8 +4,8 @@ import {
   getDocumentsById,
   saveDocument,
   type ArtifactKind,
-} from "@repo/db";
-import { ChatSDKError } from "@repo/api";
+} from "../database";
+import { ChatSDKError } from "../common/errors";
 
 @Injectable()
 export class DocumentService {

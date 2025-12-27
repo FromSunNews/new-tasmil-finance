@@ -20,8 +20,9 @@ import { Request } from "express";
 import { Observable } from "rxjs";
 import { ChatService } from "./chat.service";
 import { CreateChatDto } from "./dto/chat.dto";
+import { ChatParamsDto, MessageParamsDto, UpdateChatVisibilityDto } from "./dto/chat-params.dto";
 import { JwtAuthGuard } from "../auth/guards/auth.guard";
-import { ChatSDKError } from "@repo/api";
+import { ChatSDKError } from "../common/errors";
 import type { JwtPayload } from "../auth/auth.service";
 
 const isProd = process.env.NODE_ENV === 'production';
@@ -118,22 +119,22 @@ export class ChatController {
 
   @Get(":id")
   @ApiOperation({ summary: "Get chat by ID" })
-  @ApiParam({ name: "id", type: String })
+  @ApiParam({ name: "id", type: String, description: "Chat ID" })
   @ApiResponse({ status: 200, description: "Chat retrieved" })
   @ApiResponse({ status: 401, description: "Unauthorized" })
   @ApiResponse({ status: 404, description: "Chat not found" })
-  async getChat(@Param("id") id: string, @Req() req: Request) {
-    return this.chatService.getChatWithMessages(id, this.getUser(req).id);
+  async getChat(@Param() params: ChatParamsDto, @Req() req: Request) {
+    return this.chatService.getChatWithMessages(params.id, this.getUser(req).id);
   }
 
   @Get(":id/stream")
   @Sse()
   @ApiOperation({ summary: "Get resumable stream for chat" })
-  @ApiParam({ name: "id", type: String })
+  @ApiParam({ name: "id", type: String, description: "Chat ID" })
   @ApiResponse({ status: 200, description: "Stream retrieved" })
   @ApiResponse({ status: 401, description: "Unauthorized" })
-  async getStream(@Param("id") id: string, @Req() req: Request): Promise<Observable<string> | null> {
-    return this.chatService.getResumableStream(id, this.getUser(req).id);
+  async getStream(@Param() params: ChatParamsDto, @Req() req: Request): Promise<Observable<string> | null> {
+    return this.chatService.getResumableStream(params.id, this.getUser(req).id);
   }
 
   @Delete()
@@ -151,32 +152,11 @@ export class ChatController {
 
   @Delete("messages/:id/trailing")
   @ApiOperation({ summary: "Delete trailing messages from a message" })
-  @ApiParam({ name: "id", type: String })
+  @ApiParam({ name: "id", type: String, description: "Message ID" })
   @ApiResponse({ status: 200, description: "Messages deleted" })
   @ApiResponse({ status: 401, description: "Unauthorized" })
-  async deleteTrailingMessages(@Param("id") messageId: string, @Req() req: Request) {
-    return this.chatService.deleteTrailingMessages(messageId, this.getUser(req).id);
-  }
-
-  @Patch(":id/visibility")
-  @ApiOperation({ summary: "Update chat visibility" })
-  @ApiParam({ name: "id", type: String })
-  @ApiBody({
-    schema: {
-      type: "object",
-      properties: {
-        visibility: { type: "string", enum: ["private", "public"] },
-      },
-    },
-  })
-  @ApiResponse({ status: 200, description: "Visibility updated" })
-  @ApiResponse({ status: 401, description: "Unauthorized" })
-  async updateChatVisibility(
-    @Param("id") chatId: string,
-    @Body() body: { visibility: "private" | "public" },
-    @Req() req: Request
-  ) {
-    return this.chatService.updateChatVisibility(chatId, body.visibility, this.getUser(req).id);
+  async deleteTrailingMessages(@Param() params: MessageParamsDto, @Req() req: Request) {
+    return this.chatService.deleteTrailingMessages(params.id, this.getUser(req).id);
   }
 }
 

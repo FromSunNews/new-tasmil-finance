@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { authControllerLogin, authControllerRegister, authControllerGuest, authControllerGetSession } from "@/gen/client";
-import { withAuth } from "@/lib/kubb-config";
+import { kubbClient } from "@/lib/api-client";
 import { useAuthStore } from "@/store/use-auth";
 
 interface User {
@@ -37,7 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     
     // Try to load user from session
-    authControllerGetSession(withAuth)
+    authControllerGetSession(kubbClient)
       .then((response) => {
         const sessionUser = (response as { user?: User }).user;
         if (sessionUser) {
@@ -54,7 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
-    const response = await authControllerLogin({ email, password }, withAuth) as { access_token?: string; user?: User };
+    const response = await authControllerLogin({ email, password }, kubbClient) as { access_token?: string; user?: User };
     if (response.access_token) {
       const { setTokens } = useAuthStore.getState();
       setTokens(response.access_token);
@@ -68,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const register = async (email: string, password: string) => {
-    const response = await authControllerRegister({ email, password }, withAuth) as { access_token?: string; user?: User };
+    const response = await authControllerRegister({ email, password }, kubbClient) as { access_token?: string; user?: User };
     if (response.access_token) {
       const { setTokens } = useAuthStore.getState();
       setTokens(response.access_token);
@@ -82,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const guest = async () => {
-    const response = await authControllerGuest(withAuth) as { access_token?: string; user?: User };
+    const response = await authControllerGuest(kubbClient) as { access_token?: string; user?: User };
     if (response.access_token) {
       const { setTokens } = useAuthStore.getState();
       setTokens(response.access_token);

@@ -2,7 +2,7 @@ import equal from "fast-deep-equal";
 import { memo } from "react";
 import { toast } from "sonner";
 import { useCopyToClipboard } from "usehooks-ts";
-import type { Vote } from "@/lib/db/schema";
+import type { Vote } from "@/lib/types";
 import type { ChatMessage } from "@/lib/types";
 import { useVoteControllerGetVotes, useVoteControllerVote } from "@/gen/hooks/vote-hooks";
 import { $ } from "@/lib/kubb-config";

@@ -78,7 +78,7 @@ const YieldPoolsResult = ({ data }: { data: any }) => {
                   {pool.chain}
                 </span>
                 {pool.stablecoin && (
-                  <Shield className="h-3 w-3 text-green-500" title="Stablecoin" />
+                  <Shield className="h-3 w-3 text-green-500" />
                 )}
               </div>
               <APYIndicator value={pool.apy} />
@@ -135,7 +135,7 @@ const TopYieldsByChainResult = ({ data }: { data: any }) => {
                 <div className="text-xs text-muted-foreground">{pool.project}</div>
               </div>
               {pool.stablecoin && (
-                <Shield className="h-3 w-3 text-green-500" title="Stablecoin" />
+                <Shield className="h-3 w-3 text-green-500" />
               )}
             </div>
             <div className="text-right">
@@ -222,7 +222,7 @@ const TokenSearchResult = ({ data }: { data: any }) => {
                   {pool.chain}
                 </span>
                 {pool.stablecoin && (
-                  <Shield className="h-3 w-3 text-green-500" title="Stablecoin" />
+                  <Shield className="h-3 w-3 text-green-500" />
                 )}
               </div>
               <APYIndicator value={pool.apy} />

@@ -11,7 +11,6 @@ import { Typography } from "./ui/typography";
 import { ArrowLeft } from "lucide-react";
 import { useDataStream } from "./data-stream-provider";
 import { chatControllerGetChat } from "@/gen/client";
-import { withAuth } from "@/lib/kubb-config";
 
 type DefiAgentHeaderProps = {
   className?: string;
@@ -31,9 +30,8 @@ export function DefiAgentHeader({ className }: DefiAgentHeaderProps) {
   const { data: chatData, error, mutate } = useSWR(
     chatId && chatId !== "agents" ? `chat-${chatId}` : null,
     async () => {
-      const result = await chatControllerGetChat(chatId!, { 
-        client: withAuth.client.client 
-      });
+      const { kubbClient } = await import('@/lib/api-client');
+      const result = await chatControllerGetChat(chatId!, kubbClient);
       return result;
     },
     {
@@ -63,8 +61,8 @@ export function DefiAgentHeader({ className }: DefiAgentHeaderProps) {
   }, [dataStream, mutate]);
 
   useEffect(() => {
-    if (chatData?.chat?.title) {
-      setTitle(chatData.chat.title);
+    if ((chatData as any)?.chat?.title) {
+      setTitle((chatData as any).chat.title);
     } else if (!chatData) {
       setTitle("New Chat");
     }
@@ -99,7 +97,6 @@ export function DefiAgentHeader({ className }: DefiAgentHeaderProps) {
       <div className="ml-auto flex items-center space-x-4">
         <DefiAgentControls
           showNewChatButton={true}
-          showVisibilitySelector={false}
         />
         <DefiAgentSidebarToggle />
       </div>

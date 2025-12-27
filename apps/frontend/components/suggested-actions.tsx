@@ -4,15 +4,13 @@ import type { UseChatHelpers } from "@ai-sdk/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { memo, useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import type { ChatMessage } from "@repo/api";
+import type { ChatMessage } from "@/lib/types";
 import { Suggestion } from "./elements/suggestion";
 import { ChevronDownIcon, ChevronUpIcon, RefreshIcon } from "./icons";
-import type { VisibilityType } from "./visibility-selector";
 
 type SuggestedActionsProps = {
   chatId: string;
   sendMessage: UseChatHelpers<ChatMessage>["sendMessage"];
-  selectedVisibilityType: VisibilityType;
 };
 
 // Agent-specific suggestions
@@ -389,9 +387,6 @@ export const SuggestedActions = memo(
   PureSuggestedActions,
   (prevProps, nextProps) => {
     if (prevProps.chatId !== nextProps.chatId) {
-      return false;
-    }
-    if (prevProps.selectedVisibilityType !== nextProps.selectedVisibilityType) {
       return false;
     }
 

@@ -14,9 +14,9 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiBody } 
 import { Request } from "express";
 import { DocumentService } from "./document.service";
 import { JwtAuthGuard } from "../auth/guards/auth.guard";
-import { ChatSDKError } from "@repo/api";
+import { ChatSDKError } from "../common/errors";
 import type { JwtPayload } from "../auth/auth.service";
-import type { ArtifactKind } from "@repo/api";
+import type { ArtifactKind } from "../database/schema";
 
 @ApiTags("document")
 @ApiBearerAuth("JWT-auth")

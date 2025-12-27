@@ -1,4 +1,4 @@
-import { PostChatRequestBody } from "@repo/api";
+import { PostChatRequestBody } from "../../common/dto/chat.dto";
 import { IsOptional, IsString, IsEthereumAddress, IsNotEmpty } from "class-validator";
 
 export class CreateChatDto implements PostChatRequestBody {

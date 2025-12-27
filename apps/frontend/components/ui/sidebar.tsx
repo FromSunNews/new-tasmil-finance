@@ -392,19 +392,22 @@ const SidebarFooter = React.forwardRef<
 });
 SidebarFooter.displayName = "SidebarFooter";
 
-const SidebarSeparator = React.forwardRef<
-  React.ElementRef<typeof Separator>,
-  React.ComponentProps<typeof Separator>
->(({ className, ...props }, ref) => {
-  return (
-    <Separator
-      className={cn("mx-2 w-auto bg-sidebar-border", className)}
-      data-sidebar="separator"
-      ref={ref}
-      {...props}
-    />
-  );
-});
+type SidebarSeparatorProps = React.ComponentProps<typeof Separator>;
+
+const SidebarSeparator: React.ForwardRefExoticComponent<
+  SidebarSeparatorProps & React.RefAttributes<HTMLDivElement>
+> = React.forwardRef<HTMLDivElement, SidebarSeparatorProps>(
+  ({ className, ...props }, ref) => {
+    return (
+      <Separator
+        className={cn("mx-2 w-auto bg-sidebar-border", className)}
+        data-sidebar="separator"
+        ref={ref}
+        {...props}
+      />
+    );
+  }
+);
 SidebarSeparator.displayName = "SidebarSeparator";
 
 const SidebarContent = React.forwardRef<

@@ -3,7 +3,7 @@ import equal from "fast-deep-equal";
 import { ArrowDownIcon } from "lucide-react";
 import { memo } from "react";
 import { useMessages } from "@/hooks/use-messages";
-import type { Vote } from "@/lib/db/schema";
+import type { Vote } from "@/lib/types";
 import type { ChatMessage } from "@/lib/types";
 import { useDataStream } from "./data-stream-provider";
 import { Greeting } from "./greeting";
@@ -17,8 +17,6 @@ type MessagesProps = {
   messages: ChatMessage[];
   setMessages: UseChatHelpers<ChatMessage>["setMessages"];
   regenerate: UseChatHelpers<ChatMessage>["regenerate"];
-  isReadonly: boolean;
-  isArtifactVisible: boolean;
   selectedModelId: string;
 };
 
@@ -30,7 +28,6 @@ function PureMessages({
   messages,
   setMessages,
   regenerate,
-  isReadonly,
   selectedModelId: _selectedModelId,
 }: MessagesProps) {
   const {
@@ -61,7 +58,6 @@ function PureMessages({
               isLoading={
                 status === "streaming" && messages.length - 1 === index
               }
-              isReadonly={isReadonly}
               key={message.id}
               message={message}
               regenerate={regenerate}
@@ -108,10 +104,6 @@ function PureMessages({
 }
 
 export const Messages = memo(PureMessages, (prevProps, nextProps) => {
-  if (prevProps.isArtifactVisible && nextProps.isArtifactVisible) {
-    return true;
-  }
-
   // Always re-render when streaming to ensure text updates are visible
   if (nextProps.status === "streaming") {
     return false; // Force re-render during streaming

@@ -97,15 +97,6 @@ export type {
   ChatControllerTestSseQueryResponse,
   ChatControllerTestSseQuery,
 } from './chat-controller-test-sse.ts';
-export type {
-  ChatControllerUpdateChatVisibilityPathParams,
-  ChatControllerUpdateChatVisibility200,
-  ChatControllerUpdateChatVisibility401,
-  ChatControllerUpdateChatVisibilityMutationRequestVisibilityEnumKey,
-  ChatControllerUpdateChatVisibilityMutationRequest,
-  ChatControllerUpdateChatVisibilityMutationResponse,
-  ChatControllerUpdateChatVisibilityMutation,
-} from './chat-controller-update-chat-visibility.ts';
 export type { CreateChatDto } from './create-chat-dto.ts';
 export type {
   DocumentControllerCreateDocumentQueryParams,
@@ -155,48 +146,6 @@ export type {
   HistoryControllerGetHistoryQuery,
 } from './history-controller-get-history.ts';
 export type {
-  LinksControllerCreate201,
-  LinksControllerCreateMutationRequest,
-  LinksControllerCreateMutationResponse,
-  LinksControllerCreateMutation,
-} from './links-controller-create.ts';
-export type {
-  LinksControllerFindAll200,
-  LinksControllerFindAllQueryResponse,
-  LinksControllerFindAllQuery,
-} from './links-controller-find-all.ts';
-export type {
-  LinksControllerFindOnePathParams,
-  LinksControllerFindOne200,
-  LinksControllerFindOne404,
-  LinksControllerFindOneQueryResponse,
-  LinksControllerFindOneQuery,
-} from './links-controller-find-one.ts';
-export type {
-  LinksControllerRemovePathParams,
-  LinksControllerRemove200,
-  LinksControllerRemove404,
-  LinksControllerRemoveMutationResponse,
-  LinksControllerRemoveMutation,
-} from './links-controller-remove.ts';
-export type {
-  LinksControllerUpdatePathParams,
-  LinksControllerUpdate200,
-  LinksControllerUpdate404,
-  LinksControllerUpdateMutationRequest,
-  LinksControllerUpdateMutationResponse,
-  LinksControllerUpdateMutation,
-} from './links-controller-update.ts';
-export type { _Object } from './object.ts';
-export type {
-  SuggestionsControllerGetSuggestionsQueryParams,
-  SuggestionsControllerGetSuggestions200,
-  SuggestionsControllerGetSuggestions400,
-  SuggestionsControllerGetSuggestions401,
-  SuggestionsControllerGetSuggestionsQueryResponse,
-  SuggestionsControllerGetSuggestionsQuery,
-} from './suggestions-controller-get-suggestions.ts';
-export type {
   VoteControllerGetVotesQueryParams,
   VoteControllerGetVotes200,
   VoteControllerGetVotes400,
@@ -214,6 +163,3 @@ export type {
   VoteControllerVoteMutation,
 } from './vote-controller-vote.ts';
 export type { WalletLoginDto } from './wallet-login-dto.ts';
-export { chatControllerUpdateChatVisibilityMutationRequestVisibilityEnum } from './chat-controller-update-chat-visibility.ts';
-export { documentControllerCreateDocumentMutationRequestKindEnum } from './document-controller-create-document.ts';
-export { voteControllerVoteMutationRequestTypeEnum } from './vote-controller-vote.ts';

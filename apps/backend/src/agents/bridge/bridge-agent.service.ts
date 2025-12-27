@@ -2,7 +2,7 @@ import { Injectable } from "@nestjs/common";
 import type { IAgent } from "../interfaces/agent.interface";
 import type { JwtPayload } from "../../auth/auth.service";
 import type { UIMessageStreamWriter } from "ai";
-import type { ChatMessage } from "@repo/api";
+import type { ChatMessage } from "../../common/types";
 import { BridgeOperationsService } from "../../ai/tools/bridge/bridge-operations.service";
 
 const bridgePrompt = `You are a professional cross-chain bridge assistant AI. Your role is to help users bridge tokens between different blockchains using Owlto Bridge, with a focus on U2U Network.

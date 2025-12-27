@@ -2,8 +2,7 @@ import type { ClassValue } from "clsx";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { formatISO } from "date-fns";
-import type { DBMessage, Document } from "@repo/db";
-import type { ChatMessage, CustomUIDataTypes, ChatTools } from "@repo/api";
+import type { DBMessage, ChatMessage, CustomUIDataTypes, ChatTools, ChatSDKError } from "@/lib/types";
 import type { UIMessagePart } from "ai";
 
 export function cn(...inputs: ClassValue[]) {
@@ -167,14 +166,14 @@ export async function fetchWithErrorHandlers(
 
     if (!response.ok) {
       const { code, cause } = await response.json();
-      const { ChatSDKError } = await import("@repo/api");
+      const { ChatSDKError } = await import("@/lib/types");
       throw new ChatSDKError(code, cause);
     }
 
     return response;
   } catch (error: unknown) {
     if (typeof navigator !== "undefined" && !navigator.onLine) {
-      const { ChatSDKError } = await import("@repo/api");
+      const { ChatSDKError } = await import("@/lib/types");
       throw new ChatSDKError("offline:chat");
     }
 

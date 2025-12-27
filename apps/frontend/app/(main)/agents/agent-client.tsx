@@ -19,8 +19,7 @@ export function AgentClient({
         id={id}
         initialChatModel={initialChatModel}
         initialMessages={[]}
-        initialVisibilityType="private"
-        isReadonly={false}
+        // isReadonly={false} // REMOVED: No longer needed
         key={id}
       />
       <DataStreamHandler />

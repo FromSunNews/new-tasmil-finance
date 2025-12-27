@@ -1,5 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
-import { initDb } from "@repo/db";
+import { initDb } from "./queries";
 
 @Injectable()
 export class DatabaseService implements OnModuleInit {

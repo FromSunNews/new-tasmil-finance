@@ -3,14 +3,12 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD, APP_FILTER } from '@nestjs/core';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
-import { LinksModule } from './links/links.module';
 import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './auth/auth.module';
 import { ChatModule } from './chat/chat.module';
 import { DocumentModule } from './document/document.module';
 import { FilesModule } from './files/files.module';
 import { HistoryModule } from './history/history.module';
-import { SuggestionsModule } from './suggestions/suggestions.module';
 import { VoteModule } from './vote/vote.module';
 import { RedisModule } from './infra/redis/redis.module';
 import { AgentsModule } from './agents/agents.module';
@@ -39,9 +37,7 @@ import { AppController } from './app.controller';
     DocumentModule,
     FilesModule,
     HistoryModule,
-    SuggestionsModule,
     VoteModule,
-    LinksModule,
     AgentsModule,
   ],
   controllers: [AppController],

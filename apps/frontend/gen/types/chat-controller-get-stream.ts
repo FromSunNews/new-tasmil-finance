@@ -3,7 +3,9 @@
  * Do not edit manually.
  */
 
-export interface ChatControllerGetStreamPathParams {}
+export interface ChatControllerGetStreamPathParams {
+  id: string;
+}
 
 /**
  * @description Stream retrieved

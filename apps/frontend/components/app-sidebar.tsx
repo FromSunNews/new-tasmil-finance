@@ -47,8 +47,8 @@ export function AppSidebar({ user }: { user: User | undefined }) {
 
   const handleDeleteAll = async () => {
     const { historyControllerDeleteAllHistory } = await import('@/gen/client');
-    const { withAuth } = await import('@/lib/kubb-config');
-    const deletePromise = historyControllerDeleteAllHistory(withAuth);
+    const { kubbClient } = await import('@/lib/api-client');
+    const deletePromise = historyControllerDeleteAllHistory(kubbClient);
 
     toast.promise(deletePromise, {
       loading: "Deleting all chats...",

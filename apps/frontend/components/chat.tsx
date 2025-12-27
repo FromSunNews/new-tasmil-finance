@@ -18,61 +18,46 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useArtifactSelector } from "@/hooks/use-artifact";
 import { useAutoResume } from "@/hooks/use-auto-resume";
-import { useChatVisibility } from "@/hooks/use-chat-visibility";
-import { ChatSDKError } from "@repo/api";
-import type { Attachment, ChatMessage } from "@repo/api";
+import { ChatSDKError } from "@/lib/types";
+import type { Attachment, ChatMessage } from "@/lib/types";
 import { fetchWithErrorHandlers, generateUUID } from "@/lib/utils";
 import { useVoteControllerGetVotes } from "@/gen/hooks/vote-hooks";
 import { $ } from "@/lib/kubb-config";
-import { Artifact } from "./artifact";
 import { useDataStream } from "./data-stream-provider";
 import { Messages } from "./messages";
 import { MultimodalInput } from "./multimodal-input";
 import { getChatHistoryPaginationKey } from "./sidebar-history";
 import { toast } from "./toast";
-import type { VisibilityType } from "./visibility-selector";
 
 export function Chat({
   id,
   initialMessages,
   initialChatModel,
-  initialVisibilityType,
-  isReadonly,
   autoResume,
   agentId,
 }: {
   id: string;
   initialMessages: ChatMessage[];
   initialChatModel: string;
-  initialVisibilityType: VisibilityType;
-  isReadonly: boolean;
   autoResume: boolean;
   agentId?: string;
 }) {
   const router = useRouter();
   const { address } = useWallet();
-
-  const { visibilityType } = useChatVisibility({
-    chatId: id,
-    initialVisibilityType,
-  });
-
   const { mutate } = useSWRConfig();
 
   // Handle browser back/forward navigation
   useEffect(() => {
     const handlePopState = () => {
-      // When user navigates back/forward, refresh to sync with URL
       router.refresh();
     };
 
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, [router]);
-  const { setDataStream } = useDataStream();
 
+  const { setDataStream } = useDataStream();
   const [input, setInput] = useState<string>("");
   const [showCreditCardAlert, setShowCreditCardAlert] = useState(false);
   const [currentModelId, setCurrentModelId] = useState(initialChatModel);
@@ -94,13 +79,10 @@ export function Chat({
   } = useChat<ChatMessage>({
     id,
     messages: initialMessages,
-    experimental_throttle: 50, // Slow down to see typing effect more clearly (default is 0)
+    experimental_throttle: 50,
     generateId: generateUUID,
-    // Auto-continue after tool approval (only for APPROVED tools)
-    // Denied tools don't need server continuation - state is saved on next user message
     sendAutomaticallyWhen: ({ messages: currentMessages }) => {
       const lastMessage = currentMessages.at(-1);
-      // Only continue if a tool was APPROVED (not denied)
       const shouldContinue =
         lastMessage?.parts?.some(
           (part) =>
@@ -123,9 +105,6 @@ export function Chat({
       prepareSendMessagesRequest(request) {
         const lastMessage = request.messages.at(-1);
 
-        // Check if this is a tool approval continuation:
-        // - Last message is NOT a user message (meaning no new user input)
-        // - OR any message has tool parts that were responded to (approved or denied)
         const isToolApprovalContinuation =
           lastMessage?.role !== "user" ||
           request.messages.some((msg) =>
@@ -140,12 +119,10 @@ export function Chat({
         const requestBody = {
           body: {
             id: request.id,
-            // Send all messages for tool approval continuation, otherwise just the last user message
             ...(isToolApprovalContinuation
               ? { messages: request.messages }
               : { message: lastMessage }),
             selectedChatModel: currentModelIdRef.current,
-            selectedVisibilityType: visibilityType,
             walletAddress: address || undefined,
             agentId: agentId,
             ...request.body,
@@ -160,10 +137,12 @@ export function Chat({
     },
     onFinish: () => {
       mutate(unstable_serialize(getChatHistoryPaginationKey));
+      if (messages.length >= 1) {
+        getVotesQuery.refetch();
+      }
     },
     onError: (error) => {
       if (error instanceof ChatSDKError) {
-        // Check if it's a credit card error
         if (
           error.message?.includes("AI Gateway requires a valid credit card")
         ) {
@@ -178,10 +157,8 @@ export function Chat({
     },
   });
 
-
   const searchParams = useSearchParams();
   const query = searchParams.get("query");
-
   const [hasAppendedQuery, setHasAppendedQuery] = useState(false);
 
   useEffect(() => {
@@ -192,32 +169,27 @@ export function Chat({
       });
 
       setHasAppendedQuery(true);
-      // Only update URL if not in agent context
       if (!agentId) {
         window.history.replaceState({}, "", `/chat/${id}`);
       }
     }
   }, [query, sendMessage, hasAppendedQuery, id, agentId]);
 
-  // Use Kubb React Query hook for votes directly
   const getVotesQuery = useVoteControllerGetVotes(
     { chatId: id },
     {
       ...$,
       query: {
-        // Only fetch votes if:
-        // 1. Chat has at least 2 messages (user + assistant)
-        // 2. Chat ID is valid
-        // 3. Initial messages exist (indicating chat exists in DB)
         enabled: messages.length >= 2 && !!id && initialMessages.length > 0,
+        staleTime: 10 * 60 * 1000,
+        refetchOnMount: false,
+        refetchOnWindowFocus: false,
       },
     }
   );
-  // Backend returns array directly, but Kubb type is empty - cast to expected type
-  const votes = (getVotesQuery.data as unknown as { chatId: string; messageId: string; isUpvoted: boolean }[] | undefined) || undefined;
 
+  const votes = (getVotesQuery.data as unknown as { chatId: string; messageId: string; isUpvoted: boolean }[] | undefined) || undefined;
   const [attachments, setAttachments] = useState<Attachment[]>([]);
-  const isArtifactVisible = useArtifactSelector((state) => state.isVisible);
 
   useAutoResume({
     autoResume,
@@ -232,8 +204,6 @@ export function Chat({
         <Messages
           addToolApprovalResponse={addToolApprovalResponse}
           chatId={id}
-          isArtifactVisible={isArtifactVisible}
-          isReadonly={isReadonly}
           messages={messages}
           regenerate={regenerate}
           selectedModelId={initialChatModel}
@@ -243,44 +213,22 @@ export function Chat({
         />
 
         <div className="sticky bottom-0 z-1 mx-auto flex w-full max-w-4xl gap-2 border-t-0 bg-background px-2 pb-6 pt-4 md:px-4 md:pb-8">
-          {!isReadonly && (
-            <MultimodalInput
-              attachments={attachments}
-              chatId={id}
-              input={input}
-              messages={messages}
-              onModelChange={setCurrentModelId}
-              selectedModelId={currentModelId}
-              selectedVisibilityType={visibilityType}
-              sendMessage={sendMessage as UseChatHelpers<ChatMessage>["sendMessage"]}
-              setAttachments={setAttachments}
-              setInput={setInput}
-              setMessages={setMessages}
-              status={status}
-              stop={stop}
-            />
-          )}
+          <MultimodalInput
+            attachments={attachments}
+            chatId={id}
+            input={input}
+            messages={messages}
+            onModelChange={setCurrentModelId}
+            selectedModelId={currentModelId}
+            sendMessage={sendMessage as UseChatHelpers<ChatMessage>["sendMessage"]}
+            setAttachments={setAttachments}
+            setInput={setInput}
+            setMessages={setMessages}
+            status={status}
+            stop={stop}
+          />
         </div>
       </div>
-
-      <Artifact
-        addToolApprovalResponse={addToolApprovalResponse}
-        attachments={attachments}
-        chatId={id}
-        input={input}
-        isReadonly={isReadonly}
-        messages={messages}
-        regenerate={regenerate}
-        selectedModelId={currentModelId}
-        selectedVisibilityType={visibilityType}
-        sendMessage={sendMessage as UseChatHelpers<ChatMessage>["sendMessage"]}
-        setAttachments={setAttachments}
-        setInput={setInput}
-        setMessages={setMessages}
-        status={status}
-        stop={stop}
-        votes={votes}
-      />
 
       <AlertDialog
         onOpenChange={setShowCreditCardAlert}
@@ -315,7 +263,6 @@ export function Chat({
   );
 }
 
-// Wrapped Chat component with ErrorBoundary
 export function ChatWithErrorBoundary(props: Parameters<typeof Chat>[0]) {
   return (
     <ErrorBoundary>

@@ -4,7 +4,7 @@ import { useAuthStore } from "@/store/use-auth";
 
 // Get API base URL without /api prefix
 // Kubb-generated URLs already include /api prefix
-const getApiBaseUrl = () => {
+export const getApiBaseUrl = () => {
   let url = process.env.NEXT_PUBLIC_API_URL || "http://localhost:9337";
   // Remove /api if it exists, because Kubb-generated URLs already have it
   url = url.replace(/\/api$/, '');
