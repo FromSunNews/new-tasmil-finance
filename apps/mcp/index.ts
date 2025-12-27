@@ -76,3 +76,33 @@ export async function submit_txn(
   return hash;
 }
 
+/**
+ * Perform a read-only call to a contract
+ * Useful for querying state without creating a transaction
+ * 
+ * @param params - Query parameters
+ * @param params.chainId - The chain ID
+ * @param params.to - Contract address
+ * @param params.data - Encoded function call data
+ * @param params.value - Optional value to send with call
+ * @param params.rpcUrl - Optional custom RPC URL
+ * @returns The raw hex result of the call
+ */
+export async function query(params: {
+  chainId: number;
+  to: `0x${string}`;
+  data: `0x${string}`;
+  value?: bigint;
+  rpcUrl?: string;
+}): Promise<`0x${string}` | undefined> {
+  const client = getClient(params.chainId, params.rpcUrl);
+
+  const { data } = await client.call({
+    to: params.to,
+    data: params.data,
+    value: params.value,
+  });
+
+  return data;
+}
+
