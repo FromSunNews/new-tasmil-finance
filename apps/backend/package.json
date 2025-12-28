@@ -18,11 +18,11 @@
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f api",
     "docker:redis": "docker compose up redis -d",
-    "db:generate": "drizzle-kit generate",
+    "db:generate": "drizzle-kit generate --config=src/drizzle.config.ts",
     "db:migrate": "tsx src/database/migrate.ts",
-    "db:studio": "drizzle-kit studio",
-    "db:push": "drizzle-kit push",
-    "db:pull": "drizzle-kit pull"
+    "db:studio": "drizzle-kit studio --config=src/drizzle.config.ts",
+    "db:push": "drizzle-kit push --config=src/drizzle.config.ts",
+    "db:pull": "drizzle-kit pull --config=src/drizzle.config.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.1",

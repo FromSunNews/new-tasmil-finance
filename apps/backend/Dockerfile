@@ -25,6 +25,9 @@ RUN pnpm install --frozen-lockfile
 WORKDIR /app/apps/backend
 RUN pnpm build
 
+# Check if build was successful
+RUN ls -la dist/
+
 # Production stage
 FROM node:20-alpine AS runner
 RUN corepack enable && corepack prepare pnpm@8.15.5 --activate
@@ -45,7 +48,13 @@ RUN pnpm install --frozen-lockfile --prod
 # Copy built files
 COPY --from=builder /app/apps/backend/dist ./apps/backend/dist
 
+# Copy source files needed at runtime (migrations, etc.)
+COPY --from=builder /app/apps/backend/migrations ./apps/backend/migrations
+
 WORKDIR /app/apps/backend
+
+# Check if files exist
+RUN ls -la dist/
 
 EXPOSE 9337
 
