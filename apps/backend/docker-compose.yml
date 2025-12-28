@@ -8,40 +8,16 @@ services:
       - .env
     environment:
       - NODE_ENV=production
-      - PORT=5555
-      - POSTGRES_URL=postgresql://${DB_USERNAME:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-tasmil}
+      - PORT=9337
       - REDIS_URL=redis://redis:6379
     ports:
-      - '${PORT:-5555}:5555'
+      - '${PORT:-9337}:9337'
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
     networks:
       - tasmil-net
     restart: on-failure:5
-
-  # PostgreSQL
-  postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: ${DB_USERNAME:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
-      POSTGRES_DB: ${DB_NAME:-tasmil}
-    ports:
-      - '${DB_PORT:-5432}:5432'
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres} -d ${DB_NAME:-tasmil}"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-      start_period: 10s
-    networks:
-      - tasmil-net
-    restart: unless-stopped
 
   # Redis
   redis:
@@ -63,9 +39,6 @@ services:
   # PgAdmin (optional - for database management)
   pgadmin:
     image: dpage/pgadmin4
-    depends_on:
-      postgres:
-        condition: service_healthy
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@tasmil.com}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
@@ -82,5 +55,4 @@ networks:
     driver: bridge
 
 volumes:
-  postgres-data:
   redis-data:

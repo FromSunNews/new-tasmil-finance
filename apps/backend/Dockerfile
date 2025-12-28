@@ -47,6 +47,6 @@ COPY --from=builder /app/apps/backend/dist ./apps/backend/dist
 
 WORKDIR /app/apps/backend
 
-EXPOSE 5555
+EXPOSE 9337
 
 CMD ["node", "dist/main.js"]
