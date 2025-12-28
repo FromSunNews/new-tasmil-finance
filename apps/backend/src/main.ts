@@ -1,6 +1,6 @@
-// Load .env file
+// Load .env file - Force load in all environments
 import { config } from 'dotenv';
-config();
+config({ path: '.env' });
 
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
@@ -10,6 +10,14 @@ import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
+  // Debug environment variables
+  console.log('🔧 Environment Debug:');
+  console.log('  NODE_ENV:', process.env.NODE_ENV);
+  console.log('  PORT:', process.env.PORT);
+  console.log('  FRONTEND_URL:', process.env.FRONTEND_URL);
+  console.log('  POSTGRES_URL:', process.env.POSTGRES_URL ? 'SET' : 'NOT SET');
+  console.log('  REDIS_URL:', process.env.REDIS_URL);
+  
   const app = await NestFactory.create(AppModule);
   
   // Security: Helmet for security headers
@@ -19,17 +27,28 @@ async function bootstrap() {
   app.use(cookieParser());
   
   // CORS configuration
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:7500';
+  const frontendUrl = process.env.FRONTEND_URL;
   const allowedOrigins = frontendUrl.split(',').map(url => url.trim());
+  
+  console.log('🌐 CORS Configuration:');
+  console.log('  FRONTEND_URL:', process.env.FRONTEND_URL);
+  console.log('  Allowed Origins:', allowedOrigins);
   
   app.enableCors({
     origin: (origin, callback) => {
+      console.log('🔍 CORS Check - Origin:', origin);
+      
       // Allow requests with no origin (like mobile apps or curl requests)
-      if (!origin) return callback(null, true);
+      if (!origin) {
+        console.log('✅ No origin - allowing');
+        return callback(null, true);
+      }
       
       if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+        console.log('✅ Origin allowed:', origin);
         callback(null, true);
       } else {
+        console.log('❌ Origin blocked:', origin);
         callback(new Error('Not allowed by CORS'));
       }
     },

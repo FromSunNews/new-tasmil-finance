@@ -6,10 +6,6 @@ services:
       dockerfile: apps/backend/Dockerfile
     env_file:
       - .env
-    environment:
-      - NODE_ENV=production
-      - PORT=9337
-      - REDIS_URL=redis://redis:6379
     ports:
       - '${PORT:-9337}:9337'
     depends_on:
