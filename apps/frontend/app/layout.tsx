@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 
 import "./globals.css";
-import { Analytics } from "@vercel/analytics/next";
 import { AppProvider } from "@/providers";
 
 export const metadata: Metadata = {
@@ -78,7 +77,6 @@ export default function RootLayout({
       </head>
       <body className="antialiased">
         <AppProvider>{children}</AppProvider>
-        <Analytics />
       </body>
     </html>
   );

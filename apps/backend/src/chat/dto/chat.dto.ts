@@ -30,9 +30,9 @@ export class CreateChatDto implements PostChatRequestBody {
   @IsString()
   selectedChatModel!: string;
   
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  selectedVisibilityType!: "public" | "private";
+  selectedVisibilityType?: "public" | "private";
   
   @IsOptional()
   @IsString()

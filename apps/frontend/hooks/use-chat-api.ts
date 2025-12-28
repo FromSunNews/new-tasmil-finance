@@ -11,12 +11,10 @@ export function useChatApi({
   id,
   initialMessages,
   initialChatModel,
-  initialVisibilityType,
 }: {
   id: string;
   initialMessages: ChatMessage[];
   initialChatModel: string;
-  initialVisibilityType: "public" | "private";
 }) {
   const router = useRouter();
   const [currentModelId, setCurrentModelId] = useState(initialChatModel);
@@ -74,13 +72,12 @@ export function useChatApi({
             message: requestBody.message,
             messages: requestBody.messages,
             selectedChatModel: currentModelIdRef.current,
-            selectedVisibilityType: initialVisibilityType,
           }),
         });
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          const { ChatSDKError } = await import('@repo/api');
+          const { ChatSDKError } = await import('@/lib/types');
           throw new ChatSDKError(errorData.code, errorData.cause);
         }
 

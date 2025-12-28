@@ -42,7 +42,3 @@ apps/frontend
 # Other
 .DS_Store
 Thumbs.db
-
-# Packages not needed
-packages/db
-packages/api

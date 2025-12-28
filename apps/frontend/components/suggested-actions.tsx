@@ -212,7 +212,6 @@ const agentSuggestions = {
     // Help & Info
     "How long does bridging take?",
     "Is bridging safe?",
-    "What is Owlto Bridge?",
     "Help me understand cross-chain bridging",
   ],
   

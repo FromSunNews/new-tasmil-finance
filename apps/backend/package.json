@@ -25,7 +25,6 @@
     "db:pull": "drizzle-kit pull"
   },
   "dependencies": {
-    "@ai-sdk/gateway": "2.0.0-beta.85",
     "@ai-sdk/openai": "^3.0.1",
     "@ai-sdk/provider": "3.0.0-beta.27",
     "@nestjs/common": "^11.0.0",
@@ -33,11 +32,9 @@
     "@nestjs/jwt": "^10.2.0",
     "@nestjs/passport": "^10.0.3",
     "@nestjs/platform-express": "^11.0.0",
-    "@nestjs/platform-fastify": "^11.0.0",
     "@nestjs/swagger": "^7.3.0",
     "@nestjs/throttler": "^5.1.3",
     "@vercel/blob": "^0.24.1",
-    "@vercel/functions": "^2.0.0",
     "ai": "6.0.0-beta.159",
     "bcrypt-ts": "^5.0.2",
     "class-transformer": "^0.5.1",
@@ -59,7 +56,6 @@
     "reflect-metadata": "^0.2.0",
     "resumable-stream": "^2.0.0",
     "rxjs": "^7.8.1",
-    "streamdown": "^1.4.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {

@@ -105,7 +105,7 @@ export class ChatService {
       message?: ChatMessage;
       messages?: ChatMessage[];
       selectedChatModel: string;
-      selectedVisibilityType: "public" | "private";
+      selectedVisibilityType?: "public" | "private";
       walletAddress?: string;
       agentId?: string;
     },
@@ -117,7 +117,7 @@ export class ChatService {
       country: string | null;
     }
   ): Promise<Observable<{ data: string }>> {
-    const { id, message, messages, selectedChatModel, selectedVisibilityType, walletAddress, agentId } =
+    const { id, message, messages, selectedChatModel, selectedVisibilityType = "private", walletAddress, agentId } =
       dto;
 
     const userType: UserType = user.type as UserType;
