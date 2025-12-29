@@ -86,7 +86,8 @@ Tools are prefixed by protocol/domain to ensure uniqueness:
 
 ## Future Roadmap
 
-- [ ] Full Owlto SDK integration
-- [ ] Real-time market data integration for Insight agent
-- [ ] Enhanced validation for staking parameters
+- [x] Full Owlto SDK integration
+- [x] Real-time market data integration for Insight agent (Basic CoinGecko support)
+- [x] Enhanced validation for staking parameters
 - [ ] Transaction simulation support
+

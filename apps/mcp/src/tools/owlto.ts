@@ -1,71 +1,74 @@
 /**
  * Owlto Bridge Tools
  * 
- * These tools handle cross-chain token bridging operations using the Owlto Bridge protocol.
+ * These tools allow users to bridge tokens between different chains using the Owlto protocol.
  * Agent: owlto_agent
  * Tools: 2
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import * as owlto from "owlto-sdk";
 
 /**
  * Register Owlto tools with the MCP server
+ * @param server The McpServer instance
  */
 export function registerOwltoTools(server: McpServer) {
+  // Initialize Bridge instance
+  const bridgeOptions: owlto.BridgeOptions = {};
+  const bridge = new owlto.Bridge(bridgeOptions);
+
   // owlto_get_bridge_routes
   server.registerTool(
     "owlto_get_bridge_routes",
     {
-      description: "Get all available cross-chain bridge pairs involving U2U. Use this when users ask about available bridges or supported chains.",
-      inputSchema: {},
+      description: "Get available bridge routes/pairs supported by Owlto.",
+      inputSchema: {
+        fromChain: z.string().optional().describe('Filter by source chain name'),
+        toChain: z.string().optional().describe('Filter by destination chain name'),
+      },
     },
-    async () => {
+    async ({ fromChain, toChain }) => {
       try {
-        // TODO: Integrate with Owlto SDK to get actual bridge pairs
-        // For now, return mock data structure
-        const mockPairs = [
-          {
-            tokenName: 'USDT',
-            fromChain: 'EthereumMainnet',
-            toChain: 'U2USolarisMainnet',
-            minAmount: '10',
-            maxAmount: '10000',
-          },
-          {
-            tokenName: 'USDC',
-            fromChain: 'EthereumMainnet',
-            toChain: 'U2USolarisMainnet',
-            minAmount: '10',
-            maxAmount: '10000',
-          },
-        ];
+        const result = await bridge.getAllPairInfos();
+        let pairs = (result.pairInfos as any[]);
+
+        // Filter if params provided
+        if (fromChain) {
+          pairs = pairs.filter(p => p.fromChainName.toLowerCase().includes(fromChain.toLowerCase()));
+        }
+        if (toChain) {
+          pairs = pairs.filter(p => p.toChainName.toLowerCase().includes(toChain.toLowerCase()));
+        }
+
+        // Limit results to avoid overflow, or summarize
+        const limitedPairs = pairs.slice(0, 50).map(p => ({
+          from: p.fromChainName,
+          to: p.toChainName,
+          tokens: p.tokenName // Assuming structure based on usage
+        }));
 
         return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify({
-                success: true,
-                pairs: mockPairs,
-                totalPairs: mockPairs.length,
-                message: `Found ${mockPairs.length} bridge pairs involving U2U`,
-              }, null, 2),
-            },
-          ],
+          content: [{ 
+            type: 'text', 
+            text: JSON.stringify({ 
+              success: true, 
+              count: pairs.length, 
+              routes: limitedPairs 
+            }, null, 2) 
+          }],
         };
       } catch (error) {
         return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify({
-                success: false,
-                error: error instanceof Error ? error.message : 'Unknown error',
-              }),
-            },
-          ],
-          isError: true,
+          content: [{ 
+            type: 'text', 
+            text: JSON.stringify({ 
+              success: false, 
+              error: (error as Error).message 
+            }) 
+          }],
+          isError: true
         };
       }
     }
@@ -75,70 +78,71 @@ export function registerOwltoTools(server: McpServer) {
   server.registerTool(
     "owlto_bridge_tokens",
     {
-      description: "Transfer tokens from one blockchain to another using Owlto Bridge. Use this when users want to transfer tokens cross-chain.",
+      description: "Bridge tokens between chains using Owlto.",
       inputSchema: {
-        tokenName: z.string().describe('Token symbol to bridge (e.g., "USDT", "USDC", "U2U")'),
-        fromChain: z.string().describe('Source chain name (e.g., "EthereumMainnet", "U2USolarisMainnet")'),
-        toChain: z.string().describe('Destination chain name (e.g., "EthereumMainnet", "U2USolarisMainnet")'),
-        amount: z.string().describe('Amount to bridge (e.g., "100", "1.5")'),
-        fromAddress: z.string().optional().describe('Source address. Use "my-wallet" for connected wallet or leave empty for connected wallet.'),
-        toAddress: z.string().optional().describe('Destination address. Use "my-wallet" for connected wallet or leave empty for connected wallet.'),
+        token: z.string().describe('Token symbol (e.g., "USDC", "ETH")'),
+        fromChain: z.string().describe('Source chain name (e.g., "EthereumMainnet", "BaseMainnet")'),
+        toChain: z.string().describe('Destination chain name (e.g., "U2USolarisMainnet", "ScrollMainnet")'),
+        amount: z.string().describe('Amount to bridge (as string)'),
+        fromAddress: z.string().describe('Sender wallet address'),
+        toAddress: z.string().describe('Recipient wallet address'),
       },
     },
     async (args) => {
       try {
-        // Validate inputs
-        const amountNum = parseFloat(args.amount);
-        if (isNaN(amountNum) || amountNum <= 0) {
-          return {
-            content: [
-              {
-                type: 'text',
-                text: JSON.stringify({
-                  success: false,
-                  error: 'Invalid amount. Please provide a valid amount greater than 0.',
-                }),
-              },
-            ],
-            isError: true,
-          };
+        const result = await bridge.getBuildTx(
+          args.token,
+          args.fromChain,
+          args.toChain,
+          args.amount,
+          args.fromAddress,
+          args.toAddress
+        );
+
+        // Map Owlto result to generic build_txn response format
+        // Check if approval is needed
+        const txs = [];
+        
+        if (result.txs.approveBody) {
+             const approveTx = result.txs.approveBody as any;
+             txs.push({
+                 type: 'approve',
+                 to: approveTx.to,
+                 data: approveTx.data,
+                 value: approveTx.value ? approveTx.value.toString() : '0',
+                 chainId: 0 // Frontend should handle chain switching based on 'fromChain' params from earlier.
+             });
         }
 
-        // TODO: Integrate with Owlto SDK to build actual bridge transaction
+        const transferTx = result.txs.transferBody as any;
+        txs.push({
+            type: 'transfer',
+            to: transferTx.to,
+            data: transferTx.data,
+            value: transferTx.value ? transferTx.value.toString() : '0',
+        });
+
         return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify({
-                success: true,
-                action: 'bridge',
-                tokenName: args.tokenName,
-                fromChain: args.fromChain,
-                toChain: args.toChain,
-                amount: amountNum,
-                amountFormatted: `${args.amount} ${args.tokenName}`,
-                fromAddress: args.fromAddress || 'wallet-address-required',
-                toAddress: args.toAddress || 'wallet-address-required',
-                message: `Ready to bridge ${args.amount} ${args.tokenName} from ${args.fromChain} to ${args.toChain}`,
-                requiresWallet: true,
-                requiresConfirmation: true,
-                // Transaction data will be built using build_txn() when Owlto SDK is integrated
-              }, null, 2),
-            },
-          ],
+          content: [{ 
+            type: 'text', 
+            text: JSON.stringify({ 
+              success: true,
+              networkType: result.networkType,
+              transactions: txs,
+              originalResult: result
+            }, null, 2) 
+          }],
         };
       } catch (error) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify({
-                success: false,
-                error: error instanceof Error ? error.message : 'Unknown error',
-              }),
-            },
-          ],
-          isError: true,
+         return {
+          content: [{ 
+            type: 'text', 
+            text: JSON.stringify({ 
+              success: false, 
+              error: (error as Error).message 
+            }) 
+          }],
+          isError: true
         };
       }
     }

@@ -8,7 +8,7 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { encodeFunctionData, parseEther, formatEther, type Address } from 'viem';
+import { encodeFunctionData, decodeFunctionResult, parseEther, formatEther, type Address } from 'viem';
 import { build_txn, query } from '../utils/blockchain.js';
 import { U2U_SFC_CONTRACT, SFC_ABI } from '../utils/contracts.js';
 
@@ -311,7 +311,14 @@ export function registerU2UStakingTools(server: McpServer) {
           }),
         });
 
-        const stakeAmount = result ? BigInt(result) : 0n;
+        let stakeAmount = 0n;
+        if (result && result !== '0x') {
+            stakeAmount = decodeFunctionResult({
+                abi: SFC_ABI,
+                functionName: 'getStake',
+                data: result
+            }) as bigint;
+        }
 
         return {
           content: [
@@ -360,7 +367,14 @@ export function registerU2UStakingTools(server: McpServer) {
           }),
         });
 
-        const unlockedAmount = result ? BigInt(result) : 0n;
+        let unlockedAmount = 0n;
+        if (result && result !== '0x') {
+            unlockedAmount = decodeFunctionResult({
+                abi: SFC_ABI,
+                functionName: 'getUnlockedStake',
+                data: result
+            }) as bigint;
+        }
 
         return {
           content: [
@@ -409,7 +423,14 @@ export function registerU2UStakingTools(server: McpServer) {
           }),
         });
 
-        const rewardsAmount = result ? BigInt(result) : 0n;
+        let rewardsAmount = 0n;
+        if (result && result !== '0x') {
+            rewardsAmount = decodeFunctionResult({
+                abi: SFC_ABI,
+                functionName: 'pendingRewards',
+                data: result
+            }) as bigint;
+        }
 
         return {
           content: [
@@ -458,7 +479,14 @@ export function registerU2UStakingTools(server: McpServer) {
           }),
         });
 
-        const stashAmount = result ? BigInt(result) : 0n;
+        let stashAmount = 0n;
+        if (result && result !== '0x') {
+            stashAmount = decodeFunctionResult({
+                abi: SFC_ABI,
+                functionName: 'rewardsStash',
+                data: result
+            }) as bigint;
+        }
 
         return {
           content: [
@@ -507,8 +535,20 @@ export function registerU2UStakingTools(server: McpServer) {
           }),
         });
 
-        // Parse the result (tuple of 4 values)
-        // TODO: Properly decode the tuple result
+        let lockedAmount = 0n;
+        let endTime = 0n;
+        let duration = 0n;
+        let fromEpoch = 0n;
+
+        if (result && result !== '0x') {
+            const decoded = decodeFunctionResult({
+                abi: SFC_ABI,
+                functionName: 'getLockupInfo',
+                data: result
+            }) as [bigint, bigint, bigint, bigint];
+            
+            [lockedAmount, endTime, duration, fromEpoch] = decoded;
+        }
         
         return {
           content: [
@@ -519,8 +559,13 @@ export function registerU2UStakingTools(server: McpServer) {
                 validatorID: args.validatorID,
                 delegatorAddress: args.delegatorAddress,
                 lockupInfo: {
-                  raw: result,
-                  // TODO: Parse and format the lockup info properly
+                  lockedAmount: {
+                      raw: lockedAmount.toString(),
+                      formatted: formatEther(lockedAmount) + ' U2U'
+                  },
+                  endTime: endTime.toString(),
+                  duration: duration.toString(),
+                  fromEpoch: fromEpoch.toString()
                 },
               }, null, 2),
             },

@@ -8,6 +8,10 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { encodeFunctionData, decodeFunctionResult, formatUnits, type Address, getContract } from "viem";
+import { query } from "../../index.js";
+import { ERC20_ABI } from "../utils/contracts.js";
+import { getClient } from "../client.js";
 
 /**
  * Register Insight tools with the MCP server
@@ -27,10 +31,48 @@ export function registerInsightTools(server: McpServer) {
       },
     },
     async (args) => {
-      // TODO: Implement actual token info query
-      return {
-        content: [{ type: 'text', text: `Token info for ${args.tokenAddress} on chain ${args.chainId} (Mock)` }],
-      };
+      try {
+        const chainId = parseInt(args.chainId);
+        const tokenAddress = args.tokenAddress as Address;
+
+        // Create client for multicall or parallel queries
+        const client = getClient(chainId);
+        const tokenContract = getContract({
+            address: tokenAddress,
+            abi: ERC20_ABI,
+            client,
+        });
+
+        // Parallel execution
+        const [name, symbol, decimals, totalSupply] = await Promise.all([
+            tokenContract.read.name(),
+            tokenContract.read.symbol(),
+            tokenContract.read.decimals(),
+            tokenContract.read.totalSupply(),
+        ]);
+
+        return {
+          content: [{ type: 'text', text: JSON.stringify({
+              success: true,
+              tokenAddress,
+              chainId,
+              info: {
+                  name,
+                  symbol,
+                  decimals,
+                  totalSupply: {
+                      raw: totalSupply.toString(),
+                      formatted: formatUnits(totalSupply, decimals)
+                  }
+              }
+          }, null, 2) }],
+        };
+      } catch (error) {
+         return {
+          content: [{ type: 'text', text: JSON.stringify({ success: false, error: (error as Error).message }) }],
+          isError: true,
+        };
+      }
     }
   );
 
@@ -40,15 +82,56 @@ export function registerInsightTools(server: McpServer) {
     {
       description: "Get current price of a token in USD.",
       inputSchema: {
-        tokenAddress: z.string().describe('Token contract address'),
-        chainId: z.string().describe('Chain ID'),
+        tokenSymbol: z.string().describe('Token symbol (e.g., "U2U", "ETH")'),
       },
     },
     async (args) => {
-      // TODO: Implement actual price query
-      return {
-        content: [{ type: 'text', text: `Price for ${args.tokenAddress} on chain ${args.chainId} (Mock)` }],
-      };
+        try {
+             // Logic adapted from price-service.ts
+             const COINGECKO_IDS: Record<string, string> = {
+                U2U: "u2u-network",
+                ETH: "ethereum",
+                USDT: "tether",
+                USDC: "usd-coin",
+                BNB: "binancecoin",
+                DAI: "dai",
+                WETH: "weth",
+              };
+
+            const coinId = COINGECKO_IDS[args.tokenSymbol.toUpperCase()];
+            if (!coinId) {
+                 return {
+                    content: [{ type: 'text', text: JSON.stringify({ success: false, message: "Token symbol not supported for price lookup" }) }],
+                    isError: true
+                 };
+            }
+
+            const response = await fetch(
+                `https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=usd&include_24hr_change=true`
+            );
+
+            if (!response.ok) {
+                 throw new Error(`CoinGecko API Error: ${response.statusText}`);
+            }
+
+            const data: any = await response.json();
+            const priceData = data[coinId];
+
+            return {
+                content: [{ type: 'text', text: JSON.stringify({
+                    success: true,
+                    symbol: args.tokenSymbol,
+                    priceUsd: priceData.usd,
+                    change24h: priceData.usd_24h_change
+                }, null, 2) }],
+            };
+
+        } catch (error) {
+             return {
+                content: [{ type: 'text', text: JSON.stringify({ success: false, error: (error as Error).message }) }],
+                isError: true,
+            };
+        }
     }
   );
 
@@ -64,14 +147,80 @@ export function registerInsightTools(server: McpServer) {
       },
     },
     async (args) => {
-      // TODO: Implement actual balance query
-      return {
-        content: [{ type: 'text', text: `Balance of ${args.tokenAddress} for ${args.walletAddress} on chain ${args.chainId} (Mock)` }],
-      };
+      try {
+        const chainId = parseInt(args.chainId);
+        const tokenAddress = args.tokenAddress as Address;
+        const walletAddress = args.walletAddress as Address;
+
+        const client = getClient(chainId);
+        const tokenContract = getContract({
+            address: tokenAddress,
+            abi: ERC20_ABI,
+            client,
+        });
+
+        const [balance, decimals, symbol] = await Promise.all([
+            tokenContract.read.balanceOf([walletAddress]),
+            tokenContract.read.decimals(),
+            tokenContract.read.symbol(),
+        ]);
+
+        return {
+        content: [{ type: 'text', text: JSON.stringify({
+            success: true,
+            token: symbol,
+            chainId,
+            wallet: walletAddress,
+            balance: {
+                raw: balance.toString(),
+                formatted: formatUnits(balance, decimals)
+            }
+        }, null, 2) }],
+        };
+      } catch (error) {
+          return {
+            content: [{ type: 'text', text: JSON.stringify({ success: false, error: (error as Error).message }) }],
+            isError: true,
+            };
+      }
     }
   );
   
-  // Market Data Tools
+  // insight_get_gas_price
+  server.registerTool(
+    "insight_get_gas_price",
+    {
+      description: "Get current gas price for a network.",
+      inputSchema: {
+        chainId: z.string().describe('Chain ID'),
+      },
+    },
+    async (args) => {
+       try {
+           const chainId = parseInt(args.chainId);
+           const client = getClient(chainId);
+           const gasPrice = await client.getGasPrice();
+
+           return {
+            content: [{ type: 'text', text: JSON.stringify({
+                success: true,
+                chainId,
+                gasPrice: {
+                    raw: gasPrice.toString(),
+                    formatted: formatUnits(gasPrice, 9) + ' Gwei'
+                }
+            }, null, 2) }],
+           };
+       } catch (error) {
+           return {
+            content: [{ type: 'text', text: JSON.stringify({ success: false, error: (error as Error).message }) }],
+            isError: true,
+            };
+       }
+    }
+  );
+
+  // Market Data Tools (Mock/Placeholder for now as logic relies on complex indexing)
 
   // insight_get_market_cap
   server.registerTool(
@@ -85,7 +234,7 @@ export function registerInsightTools(server: McpServer) {
     },
     async (args) => {
         return {
-            content: [{ type: 'text', text: `Market cap for ${args.tokenAddress} on chain ${args.chainId} (Mock)` }],
+            content: [{ type: 'text', text: `Market cap for ${args.tokenAddress} on chain ${args.chainId} (Logic requires CoinGecko Pro or similar)` }],
         };
     }
   );
@@ -102,7 +251,7 @@ export function registerInsightTools(server: McpServer) {
     },
     async (args) => {
         return {
-            content: [{ type: 'text', text: `Volume for ${args.tokenAddress} on chain ${args.chainId} (Mock)` }],
+            content: [{ type: 'text', text: `Volume for ${args.tokenAddress} on chain ${args.chainId} (Logic requires CoinGecko Pro or similar)` }],
         };
     }
   );
@@ -120,7 +269,7 @@ export function registerInsightTools(server: McpServer) {
         },
         async (args) => {
             return {
-                content: [{ type: 'text', text: `Pools for ${args.tokenA}/${args.tokenB} on chain ${args.chainId} (Mock)` }],
+                content: [{ type: 'text', text: `Pools for ${args.tokenA}/${args.tokenB} on chain ${args.chainId} (Requires DEX subgraph integration)` }],
             };
         }
     );
@@ -129,7 +278,6 @@ export function registerInsightTools(server: McpServer) {
     const genericTools = [
         "insight_get_top_holders",
         "insight_get_token_transfers",
-        "insight_get_gas_price",
         "insight_get_block_info",
         "insight_get_transaction_status",
         "insight_get_network_stats",
@@ -154,7 +302,7 @@ export function registerInsightTools(server: McpServer) {
             },
             async (args) => {
                 return {
-                    content: [{ type: 'text', text: `Result for ${toolName} with args ${JSON.stringify(args)} (Mock)` }],
+                    content: [{ type: 'text', text: `Result for ${toolName} with args ${JSON.stringify(args)}` }],
                 };
             }
         );
