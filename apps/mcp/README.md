@@ -1,138 +1,92 @@
 # U2U DeFi MCP Server
 
-Model Context Protocol (MCP) server for DeFi operations on U2U Solaris network.
+Model Context Protocol (MCP) server for DeFi operations on U2U Solaris network, built with Express and the official MCP SDK.
 
 ## Overview
 
-This MCP server provides 31 tools across 3 specialized agents for blockchain interactions:
+This MCP server provides **31+ tools** across multiple specialized agents for blockchain interactions:
 
 ### Agents
 
-1. **Owlto Agent** (`owlto_agent`) - Cross-chain bridging (2 tools)
+1. **Transaction Agent** (Infrastructure)
+   - `build_transaction` - Build raw transaction objects
+   - `submit_transaction` - Submit signed transactions
+   - `query_contract` - Read-only contract calls
+   - `get_supported_chains` - List supported networks
+
+2. **Owlto Agent** (`owlto_agent`) - Cross-chain bridging
    - `owlto_get_bridge_routes` - Get available bridge pairs
    - `owlto_bridge_tokens` - Execute bridge transactions
 
-2. **U2 Staking Agent** (`u2_staking_agent`) - Staking operations (10 tools)
-   - Transaction tools: delegate, undelegate, claim_rewards, restake_rewards, lock_stake
-   - Query tools: get_user_stake, get_unlocked_stake, get_pending_rewards, get_rewards_stash, get_lockup_info
+3. **U2 Staking Agent** (`u2_staking_agent`) - Staking operations
+   - **Transaction Tools**: `u2u_staking_delegate`, `u2u_staking_undelegate`, `u2u_staking_claim_rewards`, `u2u_staking_restake_rewards`, `u2u_staking_lock_stake`
+   - **Query Tools**: `u2u_staking_get_user_stake`, `u2u_staking_get_unlocked_stake`, `u2u_staking_get_pending_rewards`, etc.
 
-3. **Insight Agent** (`insight_agent`) - Analytics and queries (19 tools)
-   - ERC20 token queries (6 tools)
-   - Network-level queries (5 tools)
-   - Validator queries (5 tools)
-   - User staking queries (3 tools)
+4. **Insight Agent** (`insight_agent`) - Analytics and queries
+   - Token information & balances
+   - Market data (price, cap, volume)
+   - Liquidity pool search
+   - Network stats
 
 ## Architecture
 
-### Core Infrastructure
-
-All tools use three core infrastructure functions:
-
-- **`build_txn()`** - Build transaction data for user signing
-- **`submit_txn()`** - Submit signed transaction to blockchain
-- **`query()`** - Perform read-only contract calls
-
-These functions are located in `src/utils/blockchain.ts` and provide the foundation for all blockchain interactions.
+This server uses **Express.js** as the transport layer (`StreamableHTTPServerTransport`) for the MCP protocol, allowing it to be deployed as a standard HTTP web service.
 
 ### Directory Structure
 
 ```
 apps/mcp/
+├── server.ts             # Main Express + MCP server entry point
+├── index.ts              # Blockchain utility exports (build_txn, submit_txn)
+├── chains.ts             # Chain configurations
+├── client.ts             # Viem client implementation
 ├── src/
-│   ├── index.ts              # Main MCP server entry point
 │   ├── tools/
-│   │   ├── owlto.ts          # Owlto bridge tools (2 tools)
-│   │   ├── u2u-staking.ts    # U2U staking tools (10 tools)
-│   │   └── insight.ts        # Insight analytics tools (19 tools)
-│   ├── utils/
-│   │   ├── blockchain.ts     # Core infrastructure (build_txn, submit_txn, query)
-│   │   ├── chains.ts         # Chain configurations
-│   │   ├── client.ts         # Viem client creation
-│   │   └── contracts.ts      # Contract ABIs and addresses
-│   └── types/
-│       └── index.ts          # TypeScript type definitions
-├── package.json
-├── tsconfig.json
-└── README.md
+│   │   ├── owlto.ts          # Owlto registration & logic
+│   │   ├── u2u-staking.ts    # U2U Staking registration & logic
+│   │   └── insight.ts        # Insight registration & logic
+│   └── utils/
+│       ├── blockchain.ts     # (Legacy/Reference)
+│       └── contracts.ts      # Contract ABIs
 ```
 
 ## Installation
 
 ```bash
 cd apps/mcp
-npm install
+pnpm install
 ```
 
 ## Development
 
 ```bash
-# Run in development mode with auto-reload
-npm run dev
+# Build the project
+pnpm build
 
-# Build TypeScript
-npm run build
-
-# Run production build
-npm start
+# Run the server (default port 3008)
+pnpm start
 ```
-
-## Usage
-
-This MCP server is designed to be used with MCP-compatible clients. It communicates via stdio transport.
-
-### Tool Naming Convention
-
-All tools use protocol-specific prefixes to support future multi-protocol expansion:
-
-- `owlto_*` - Owlto Bridge protocol tools
-- `u2u_staking_*` - U2U Solaris staking tools
-- `insight_*` - Analytics and query tools
-
-This naming convention allows adding other protocols (e.g., `aave_*`, `uniswap_*`) in the future.
 
 ## Configuration
 
-### Supported Networks
+The server runs on **port 3008** by default. It exposes an MCP-compliant endpoint at `POST /mcp`.
 
-- **U2U Solaris Mainnet** (Chain ID: 39)
-- **U2U Nebulas Testnet** (Chain ID: 2484)
-- Ethereum, Polygon, Arbitrum, Optimism, Base, BSC, Avalanche (for bridging)
+- **U2U Solaris Mainnet**: Chain ID 39
+- **RPC URL**: `https://rpc-mainnet.u2u.xyz`
 
-### Contract Addresses
+## Integration
 
-- **SFC (Staking)**: `0xfc00face00000000000000000000000000000000`
+Unlike stdio-based MCP servers, this server runs over HTTP. Clients should connect via SSE (Server-Sent Events) or direct POST requests depending on the transport configuration.
 
-## Integration Guide
+### Tool Naming Convention
+Tools are prefixed by protocol/domain to ensure uniqueness:
+- `owlto_*`
+- `u2u_staking_*`
+- `insight_*`
 
-### For Backend Developers
+## Future Roadmap
 
-1. **Understanding Tool Structure**: Each tool is a standalone function that can execute independently
-2. **Core Functions**: All transaction tools use `build_txn()`, all queries use `query()`
-3. **Protocol-Specific Naming**: Tools are prefixed by protocol for easy identification
-4. **Agent Separation**: Tools are organized by agent responsibility
-
-### For AI Developers
-
-1. **Agent Coordination**: Tools are grouped by agent (Owlto, U2 Staking, Insight)
-2. **Tool Discovery**: Use `tools/list` to get all available tools
-3. **Tool Execution**: Call `tools/call` with tool name and arguments
-4. **Error Handling**: All tools return `{ success: boolean, ... }` format
-
-## Security
-
-- Server never handles private keys
-- All transactions require user wallet confirmation
-- Input validation on all parameters
-- Read-only queries for analytics
-
-## Future Enhancements
-
-- [ ] Complete Owlto SDK integration for bridge tools
-- [ ] Add GraphQL integration for validator data
-- [ ] Implement network-level query tools
-- [ ] Add support for more staking protocols
-- [ ] Add transaction simulation tools
-
-## License
-
-Private - Part of Tasmil Finance project
+- [ ] Full Owlto SDK integration
+- [ ] Real-time market data integration for Insight agent
+- [ ] Enhanced validation for staking parameters
+- [ ] Transaction simulation support

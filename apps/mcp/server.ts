@@ -7,7 +7,9 @@ import { Request, Response } from "express";
 import { z } from "zod";
 import { build_txn, submit_txn, query } from "./index.js";
 import { SUPPORTED_CHAINS } from "./chains.js";
-import { jsonRpc } from "viem/nonce";
+import { registerOwltoTools } from "./src/tools/owlto.js";
+import { registerU2UStakingTools } from "./src/tools/u2u-staking.js";
+import { registerInsightTools } from "./src/tools/insight.js";
 
 function getServer(){
 
@@ -17,6 +19,11 @@ function getServer(){
         name: "blockchain-transaction-server",
         version: "1.0.0",
     });
+
+    // Register agent tools
+    registerOwltoTools(server);
+    registerU2UStakingTools(server);
+    registerInsightTools(server);
 
     // Helper function to get supported chain IDs list
     function getSupportedChainsList(): string {
