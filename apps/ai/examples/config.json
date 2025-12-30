@@ -1,0 +1,83 @@
+{
+  "agents": [
+    {
+      "agent_id": "application_agent",
+      "core_agent_type": "react",
+      "system_prompt": "THIS IS THE SYSTEM PROMPT FOR THE AGENT",
+      "instructions": [
+        "THIS IS INSTRUCTIONS FOR THE AGENT"
+      ],
+      "resources": [
+        {
+          "resource_id": "application_tool",
+          "kind": "tool",
+          "server_type": "TOOL",
+          "tools": [
+          ],
+          "connection": {
+            "mcp_server_name": "application",
+            "url": "http://localhost:8080/mcp",
+            "transport": "streamable_http",
+            "headers": {
+              "Authorization": {
+                "source": "env",
+                "key": "MCP_AUTHORIZATION"
+              }
+            }
+          }
+        }
+      ],
+      "llm_config": {
+        "model": "gpt-4.1-nano",
+        "api_key": {
+          "source": "env",
+          "key": "LLM_PROXY_API_KEY"
+        },
+        "api_base": {
+          "source": "env",
+          "key": "LLM_PROXY_URL"
+        }
+      }
+    },
+    {
+      "agent_id": "application_agent_vn",
+      "core_agent_type": "react",
+      "system_prompt": "You are application agent from Ringkas, your name is Risa",
+      "instructions": [
+        "Always respond in Vietnamese"
+      ],
+      "resources": [
+        {
+          "resource_id": "application_tool_vn",
+          "kind": "tool",
+          "server_type": "TOOL",
+          "tools": [
+            "get_all_application_status"
+          ],
+          "connection": {
+            "mcp_server_name": "application",
+            "url": "http://localhost:8080/mcp",
+            "transport": "streamable_http",
+            "headers": {
+              "Authorization": {
+                "source": "env",
+                "key": "MCP_AUTHORIZATION"
+              }
+            }
+          }
+        }
+      ],
+      "llm_config": {
+        "model": "gpt-4.1-nano",
+        "api_key": {
+          "source": "env",
+          "key": "LLM_PROXY_API_KEY"
+        },
+        "api_base": {
+          "source": "env",
+          "key": "LLM_PROXY_URL"
+        }
+      }
+    }
+  ]
+}
