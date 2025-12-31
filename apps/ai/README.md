@@ -1,0 +1,1 @@
+uvicorn api.server:app --env-file .env --reload --port 8001
