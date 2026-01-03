@@ -281,41 +281,53 @@ function getServer(){
     return server;
 }
 
-const app = express();
-app.use(express.json());
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 
-app.post("/mcp", async (req: Request, res: Response) => {
-    try {
-    const server = getServer();
-    const transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: undefined
-    });
-    res.on("close", () => {
-        console.log("Client disconnected");
-        transport.close();
-        server.close();
-    });
-
-    await server.connect(transport);
-    await transport.handleRequest(req, res, req.body);
-    } catch (error) {
-        console.error("Error in /mcp endpoint:", error);
-        if(!res.headersSent) {
-            res.status(500).json({ 
-                jsonRpc: "2.0",
-                error: {
-                    code: -32603,
-                    message: "Internal Server Error",
-                },
-                id: null,
-            });
-        }
+const args = process.argv.slice(2);
+if (args.includes("--stdio")) {
+    async function runStdio() {
+        const server = getServer();
+        const transport = new StdioServerTransport();
+        await server.connect(transport);
+        console.error("MCP server running in stdio mode.");
     }
-    
-    
-});
+    runStdio().catch(console.error);
+} else {
+    const app = express();
+    app.use(express.json());
 
-const port = 3008;
-app.listen(port, () => {
-    console.log(`Server is running on port ${port}`);
-});
+    app.post("/mcp", async (req: Request, res: Response) => {
+        try {
+            const server = getServer();
+            const transport = new StreamableHTTPServerTransport({
+                sessionIdGenerator: undefined
+            });
+            
+            res.on("close", () => {
+                console.log("Client disconnected");
+                transport.close();
+                server.close();
+            });
+
+            await server.connect(transport);
+            await transport.handleRequest(req, res, req.body);
+        } catch (error) {
+            console.error("Error in /mcp endpoint:", error);
+            if(!res.headersSent) {
+                res.status(500).json({ 
+                    jsonRpc: "2.0",
+                    error: {
+                        code: -32603,
+                        message: "Internal Server Error",
+                    },
+                    id: null,
+                });
+            }
+        }
+    });
+
+    const port = 3008;
+    app.listen(port, () => {
+        console.log(`Server is running on port ${port}`);
+    });
+}
