@@ -86,10 +86,47 @@ export function registerInsightTools(server: McpServer) {
       },
     },
     async (args) => {
+        let errorMsg = "";
+
+        // 1. Try CryptoCompare (Primary)
+        try {
+            const sym = args.tokenSymbol.toUpperCase();
+            const ccResponse = await fetch(
+                `https://min-api.cryptocompare.com/data/price?fsym=${sym}&tsyms=USD`,
+                {
+                    headers: { "User-Agent": "Mozilla/5.0" }
+                }
+            );
+
+            if (ccResponse.ok) {
+                const ccData: any = await ccResponse.json();
+                
+                if (ccData.Response === "Error") {
+                    console.error(`CryptoCompare API Error: ${ccData.Message}`);
+                    errorMsg += `CryptoCompare: ${ccData.Message}. `;
+                } else if (ccData.USD) {
+                    return {
+                        content: [{ type: 'text', text: JSON.stringify({
+                            success: true,
+                            source: "CryptoCompare",
+                            symbol: args.tokenSymbol,
+                            priceUsd: ccData.USD
+                        }, null, 2) }],
+                    };
+                }
+            } else {
+                 errorMsg += `CryptoCompare: ${ccResponse.statusText}. `;
+            }
+        } catch (e) {
+             console.error(`CryptoCompare fetch error: ${(e as Error).message}`);
+             errorMsg += `CryptoCompare: ${(e as Error).message}. `;
+        }
+
+        // 2. Try CoinGecko (Backup)
         try {
              // Logic adapted from price-service.ts
              const COINGECKO_IDS: Record<string, string> = {
-                U2U: "u2u-network",
+                U2U: "unicorn-ultra",
                 ETH: "ethereum",
                 USDT: "tether",
                 USDC: "usd-coin",
@@ -99,45 +136,51 @@ export function registerInsightTools(server: McpServer) {
               };
 
             const coinId = COINGECKO_IDS[args.tokenSymbol.toUpperCase()];
-            if (!coinId) {
-                 return {
-                    content: [{ type: 'text', text: JSON.stringify({ success: false, message: "Token symbol not supported for price lookup" }) }],
-                    isError: true
-                 };
-            }
+            if (coinId) {
+                try {
+                    const response = await fetch(
+                        `https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=usd&include_24hr_change=true`,
+                        {
+                            headers: {
+                                "User-Agent": "Mozilla/5.0",
+                                "Accept": "application/json"
+                            }
+                        }
+                    );
 
-            const response = await fetch(
-                `https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=usd&include_24hr_change=true`,
-                {
-                    headers: {
-                        "User-Agent": "Mozilla/5.0",
-                        "Accept": "application/json"
+                    if (response.ok) {
+                        const data: any = await response.json();
+                        const priceData = data[coinId];
+                        return {
+                            content: [{ type: 'text', text: JSON.stringify({
+                                success: true,
+                                source: "CoinGecko",
+                                symbol: args.tokenSymbol,
+                                priceUsd: priceData.usd,
+                                change24h: priceData.usd_24h_change
+                            }, null, 2) }],
+                        };
+                    } else {
+                        console.error(`CoinGecko failed: ${response.statusText}`);
+                        errorMsg += `CoinGecko: ${response.statusText}. `;
                     }
+                } catch (e) {
+                    console.error(`CoinGecko error: ${(e as Error).message}`);
+                    errorMsg += `CoinGecko: ${(e as Error).message}. `;
                 }
-            );
-
-            if (!response.ok) {
-                 throw new Error(`CoinGecko API Error: ${response.statusText}`);
+            } else {
+                errorMsg += "CoinGecko: Token symbol not mapped. ";
             }
-
-            const data: any = await response.json();
-            const priceData = data[coinId];
-
-            return {
-                content: [{ type: 'text', text: JSON.stringify({
-                    success: true,
-                    symbol: args.tokenSymbol,
-                    priceUsd: priceData.usd,
-                    change24h: priceData.usd_24h_change
-                }, null, 2) }],
-            };
-
         } catch (error) {
-             return {
-                content: [{ type: 'text', text: JSON.stringify({ success: false, error: (error as Error).message }) }],
-                isError: true,
-            };
+             errorMsg += `CoinGecko: ${(error as Error).message}. `;
         }
+
+        // If both failed
+        console.error(`All price lookups failed: ${errorMsg}`);
+        return {
+            content: [{ type: 'text', text: JSON.stringify({ success: false, error: errorMsg }) }],
+            isError: true,
+        };
     }
   );
 
@@ -260,91 +303,5 @@ export function registerInsightTools(server: McpServer) {
     }
   );
 
-  // Market Data Tools (Mock/Placeholder for now as logic relies on complex indexing)
 
-  // insight_get_market_cap
-  server.registerTool(
-    "insight_get_market_cap",
-    {
-      description: "Get market capitalization for a token.",
-      inputSchema: {
-        tokenAddress: z.string().describe('Token contract address'),
-        chainId: z.string().describe('Chain ID'),
-      },
-    },
-    async (args) => {
-        return {
-            content: [{ type: 'text', text: `Market cap for ${args.tokenAddress} on chain ${args.chainId} (Logic requires CoinGecko Pro or similar)` }],
-        };
-    }
-  );
-
-  // insight_get_trading_volume
-  server.registerTool(
-    "insight_get_trading_volume",
-    {
-      description: "Get 24h trading volume for a token.",
-      inputSchema: {
-        tokenAddress: z.string().describe('Token contract address'),
-        chainId: z.string().describe('Chain ID'),
-      },
-    },
-    async (args) => {
-        return {
-            content: [{ type: 'text', text: `Volume for ${args.tokenAddress} on chain ${args.chainId} (Logic requires CoinGecko Pro or similar)` }],
-        };
-    }
-  );
-
-    // insight_search_pools
-    server.registerTool(
-        "insight_search_pools",
-        {
-            description: "Search for liquidity pools for a token pair.",
-            inputSchema: {
-                tokenA: z.string().describe('Token A address'),
-                tokenB: z.string().describe('Token B address'),
-                chainId: z.string().describe('Chain ID'),
-            },
-        },
-        async (args) => {
-            return {
-                content: [{ type: 'text', text: `Pools for ${args.tokenA}/${args.tokenB} on chain ${args.chainId} (Requires DEX subgraph integration)` }],
-            };
-        }
-    );
-
-    // Register generic tools
-    const genericTools = [
-        "insight_get_top_holders",
-        "insight_get_token_transfers",
-        "insight_get_block_info",
-        "insight_get_transaction_status",
-        "insight_get_network_stats",
-        "insight_get_validator_info",
-        "insight_get_governance_proposals",
-        "insight_get_yield_farming_info",
-        "insight_get_lending_rates",
-        "insight_get_nft_info",
-        "insight_get_nft_floor_price",
-        "insight_get_contract_abi"
-    ] as const;
-
-    for (const toolName of genericTools) {
-        server.registerTool(
-            toolName,
-            {
-                description: `Get ${toolName.replace('insight_get_', '').replace(/_/g, ' ')}.`,
-                inputSchema: {
-                     query: z.string().describe('Query parameters or ID'),
-                     chainId: z.string().optional().describe('Chain ID'),
-                },
-            },
-            async (args) => {
-                return {
-                    content: [{ type: 'text', text: `Result for ${toolName} with args ${JSON.stringify(args)}` }],
-                };
-            }
-        );
-    }
 }

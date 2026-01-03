@@ -5,7 +5,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import express from "express";
 import { Request, Response } from "express";
 import { z } from "zod";
-import { build_txn, submit_txn, query } from "./index.js";
+import { build_txn, submit_txn, query, simulate_txn } from "./index.js";
 import { SUPPORTED_CHAINS } from "./chains.js";
 import { registerOwltoTools } from "./src/tools/owlto.js";
 import { registerU2UStakingTools } from "./src/tools/u2u-staking.js";
@@ -245,6 +245,39 @@ function getServer(){
                     isError: true,
                 };
             }
+        }
+    );
+
+    // Register simulate_transaction tool
+    server.registerTool(
+        "simulate_transaction",
+        {
+            description: "Simulate a transaction to check if it succeeds and estimate gas. Use this before submitting to verify correctness.",
+            inputSchema: {
+                chainId: z.number().describe("Chain ID"),
+                to: z.string().describe("Target address"),
+                value: z.string().optional().describe("Value in wei (default 0)"),
+                data: z.string().optional().describe("Call data (0x hex)"),
+                from: z.string().optional().describe("Sender address (optional, for permission checks)"),
+            },
+        },
+        async ({ chainId, to, value, data, from }) => {
+            const result = await simulate_txn({
+                chainId,
+                to: to as `0x${string}`,
+                value: value ? BigInt(value) : 0n,
+                data: data as `0x${string}`,
+                from: from as `0x${string}`
+            });
+
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: JSON.stringify(result, null, 2),
+                    },
+                ],
+            };
         }
     );
 

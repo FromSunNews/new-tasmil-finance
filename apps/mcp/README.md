@@ -84,10 +84,47 @@ Tools are prefixed by protocol/domain to ensure uniqueness:
 - `u2u_staking_*`
 - `insight_*`
 
+## Recent Updates
+
+- **Transaction Simulation**: Added `simulate_transaction` tool to verify transactions (using `eth_estimateGas`) before submission.
+- **Robust Price Data**: Switched to **CryptoCompare** as primary source for token prices (e.g., U2U) with CoinGecko as backup, removing unreliable DexScreener fallback.
+- **Stability**: Fixed BigInt serialization issues in staking tools to ensure correct JSON responses.
+
+## Usage with Claude Desktop
+
+To verify the MCP server logic directly within Claude Desktop:
+
+### 1. Configuration
+Ensure your `claude_desktop_config.json` points to the build:
+```json
+{
+  "mcpServers": {
+    "u2u_defi": {
+      "command": "node",
+      "args": ["/absolute/path/to/apps/mcp/dist/server.js", "--stdio"]
+    }
+  }
+}
+```
+
+### 2. Verification Flow (Copy-Paste)
+
+You can ask Claude to run this entire test sequence to verify the server handles the full lifecycle of a transaction:
+
+> **"Please run a full test of the U2U Staking flow:**
+> 1. **Check Balance**: Get the native U2U balance for `0x7378Ee97ed71210dbFE60E4bb7d3bc5612f439e7`.
+> 2. **Build Delegation**: Create a transaction to stake 10^-10 U2U to validator 1.
+> 3. **Simulate**: Take the transaction data from step 2 and simulate it using `simulate_transaction` to verify it will succeed and check the gas estimate.
+> 4. **Report**: Summarize the gas estimate and validity."
+
+This flow confirms that the server can Read (Balance), Write (Build), and Verify (Simulate) correctly.
+
 ## Future Roadmap
 
 - [x] Full Owlto SDK integration
-- [x] Real-time market data integration for Insight agent (Basic CoinGecko support)
+- [x] Real-time market data integration for Insight agent
 - [x] Enhanced validation for staking parameters
-- [ ] Transaction simulation support
+- [x] Transaction simulation support
+- [ ] Integration with hardware wallets (Ledger/Trezor) via specialized client
+
 
