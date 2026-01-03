@@ -29,7 +29,7 @@ logger = get_logger(__name__)
 
 # Environment configuration
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-MCP_SERVER_URL = os.getenv("MCP_SERVER_URL", "http://localhost:8000/mcp")
+MCP_SERVER_URL = os.getenv("MCP_SERVER_URL", "http://localhost:3008/mcp")
 
 # System prompt for the staking agent
 STAKING_SYSTEM_PROMPT = """You are an expert blockchain staking assistant.
@@ -229,4 +229,4 @@ def create_simple_staking_agent():
         state_schema=State,
     )
 
-graph = create_simple_staking_agent()
+graph = get_graph()
