@@ -8,7 +8,7 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { encodeFunctionData, decodeFunctionResult, formatUnits, type Address, getContract } from "viem";
+import { encodeFunctionData, decodeFunctionResult, formatUnits, type Address, getContract, getAddress } from "viem";
 import { query } from "../../index.js";
 import { ERC20_ABI } from "../utils/contracts.js";
 import { getClient } from "../client.js";
@@ -107,7 +107,13 @@ export function registerInsightTools(server: McpServer) {
             }
 
             const response = await fetch(
-                `https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=usd&include_24hr_change=true`
+                `https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=usd&include_24hr_change=true`,
+                {
+                    headers: {
+                        "User-Agent": "Mozilla/5.0",
+                        "Accept": "application/json"
+                    }
+                }
             );
 
             if (!response.ok) {
@@ -149,10 +155,43 @@ export function registerInsightTools(server: McpServer) {
     async (args) => {
       try {
         const chainId = parseInt(args.chainId);
-        const tokenAddress = args.tokenAddress as Address;
-        const walletAddress = args.walletAddress as Address;
+        // Normalize addresses (handles checksums)
+        let tokenAddress: Address;
+        let walletAddress: Address;
+        
+        try {
+            tokenAddress = getAddress(args.tokenAddress);
+            walletAddress = getAddress(args.walletAddress);
+        } catch (e) {
+             return {
+                content: [{ type: 'text', text: JSON.stringify({ success: false, error: "Invalid address format" }) }],
+                isError: true,
+             };
+        }
 
         const client = getClient(chainId);
+
+        // Native Token Case (Zero Address)
+        if (tokenAddress === "0x0000000000000000000000000000000000000000") {
+            const balance = await client.getBalance({ address: walletAddress });
+            const symbol = chainId === 39 ? "U2U" : "ETH"; 
+            const decimals = 18;
+
+            return {
+                content: [{ type: 'text', text: JSON.stringify({
+                    success: true,
+                    token: symbol,
+                    type: "Native",
+                    chainId,
+                    wallet: walletAddress,
+                    balance: {
+                        raw: balance.toString(),
+                        formatted: formatUnits(balance, decimals)
+                    }
+                }, null, 2) }],
+            };
+        }
+
         const tokenContract = getContract({
             address: tokenAddress,
             abi: ERC20_ABI,
@@ -169,6 +208,7 @@ export function registerInsightTools(server: McpServer) {
         content: [{ type: 'text', text: JSON.stringify({
             success: true,
             token: symbol,
+            type: "ERC20",
             chainId,
             wallet: walletAddress,
             balance: {
