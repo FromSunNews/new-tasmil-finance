@@ -24,6 +24,9 @@ import ResearchResult from "./research-result";
 import StakingResult from "./staking-result";
 import StakingOperationResult from "./staking-operation-result";
 
+// Export StakingOperation for direct use
+export { StakingOperation } from "./staking-operation";
+
 const ComponentMap = {
   // DeFi Agent UI Components
   "bridge-result": BridgeResult,

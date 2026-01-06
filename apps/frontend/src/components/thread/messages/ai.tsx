@@ -15,6 +15,34 @@ import { ThreadView } from "../agent-inbox";
 import { GenericInterruptView } from "./generic-interrupt";
 import { useArtifact } from "../artifact";
 import ComponentMap from "@/custom-components";
+import Image from "next/image";
+import { Bot } from "lucide-react";
+
+function AgentAvatar() {
+  const { assistantInfo } = useChatState();
+  const icon = (assistantInfo?.metadata as any)?.icon;
+  const name = assistantInfo?.name || (assistantInfo?.metadata as any)?.name || "AI";
+  
+  if (icon) {
+    return (
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted overflow-hidden">
+        <Image 
+          src={icon} 
+          alt={name} 
+          width={32} 
+          height={32}
+          className="h-full w-full object-cover"
+        />
+      </div>
+    );
+  }
+  
+  return (
+    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
+      <Bot className="h-4 w-4 text-primary" />
+    </div>
+  );
+}
 
 function CustomComponent({
   message,
@@ -154,8 +182,9 @@ export function AssistantMessage({
   }
 
   return (
-    <div className="group mr-auto flex w-full items-start gap-2">
-      <div className="flex w-full flex-col gap-2">
+    <div className="group mr-auto flex w-full items-start gap-3">
+      <AgentAvatar />
+      <div className="flex w-full flex-col gap-2 min-w-0">
         {isToolResult ? (
           <>
             <ToolResult message={message} />
@@ -167,12 +196,7 @@ export function AssistantMessage({
           </>
         ) : (
           <>
-            {contentString.length > 0 && (
-              <div className="py-1">
-                <MarkdownText>{contentString}</MarkdownText>
-              </div>
-            )}
-
+            {/* 1. Tool Calls (Running state) */}
             {!hideToolCalls && (
               <>
                 {(hasToolCalls && toolCallsHaveContents && (
@@ -187,12 +211,21 @@ export function AssistantMessage({
               </>
             )}
 
+            {/* 2. Custom UI Component (e.g., Delegate Stake card) */}
             {message && (
               <CustomComponent
                 message={message}
                 thread={thread}
               />
             )}
+
+            {/* 3. AI Text Response */}
+            {contentString.length > 0 && (
+              <div className="py-1">
+                <MarkdownText>{contentString}</MarkdownText>
+              </div>
+            )}
+
             <Interrupt
               interrupt={threadInterrupt}
               isLastMessage={isLastMessage}
@@ -224,7 +257,8 @@ export function AssistantMessage({
 
 export function AssistantMessageLoading() {
   return (
-    <div className="mr-auto flex items-start gap-2">
+    <div className="mr-auto flex items-start gap-3">
+      <AgentAvatar />
       <div className="bg-muted flex h-8 items-center gap-1 rounded-2xl px-4 py-2">
         <div className="bg-foreground/50 h-1.5 w-1.5 animate-[pulse_1.5s_ease-in-out_infinite] rounded-full"></div>
         <div className="bg-foreground/50 h-1.5 w-1.5 animate-[pulse_1.5s_ease-in-out_0.5s_infinite] rounded-full"></div>

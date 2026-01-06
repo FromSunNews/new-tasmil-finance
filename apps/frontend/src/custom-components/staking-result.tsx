@@ -132,6 +132,7 @@ export default function StakingResult({ result, toolType }: StakingResultProps) 
   
   switch (toolType) {
     case "tool-getAccountBalance":
+    case "tool-u2u_staking_get_user_stake":
       return (
         <div className="p-4">
           <AccountBalanceResult data={result} />
@@ -161,9 +162,19 @@ export default function StakingResult({ result, toolType }: StakingResultProps) 
       );
     
     case "tool-getPendingRewards":
+    case "tool-u2u_staking_get_pending_rewards":
+    case "tool-u2u_staking_get_rewards_stash":
       return (
         <div className="p-4">
           <PendingRewardsResult data={result} />
+        </div>
+      );
+    
+    case "tool-u2u_staking_get_unlocked_stake":
+    case "tool-u2u_staking_get_lockup_info":
+      return (
+        <div className="p-4">
+          <AccountBalanceResult data={result} />
         </div>
       );
     

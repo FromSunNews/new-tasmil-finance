@@ -7,6 +7,7 @@ import type { PropsWithChildren } from "react";
 import { useState } from "react";
 import { Toaster } from "sonner";
 import { WagmiProvider } from "wagmi";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { wagmiConfig, defaultNetwork } from "@/config/wagmi";
 import { WalletProvider } from "@/context/wallet-context";
 import "@rainbow-me/rainbowkit/styles.css";
@@ -123,7 +124,9 @@ export function AppProvider({ children }: PropsWithChildren) {
             modalSize="wide"
             theme={defiDarkTheme}
           >
-            <WalletProvider>{children}</WalletProvider>
+            <TooltipProvider>
+              <WalletProvider>{children}</WalletProvider>
+            </TooltipProvider>
             <Toaster position="top-right" richColors />
           </RainbowKitProvider>
         </ThemeProvider>

@@ -2,6 +2,25 @@
 
 import { createContext, useContext, useState, ReactNode, useCallback } from "react";
 
+// Assistant metadata from /assistants/search
+interface AssistantMetadata {
+  id?: string;
+  icon?: string;
+  name?: string;
+  type?: string;
+  author?: string;
+  version?: string;
+  category?: string;
+  description?: string[];
+}
+
+interface AssistantInfo {
+  assistant_id: string;
+  graph_id: string;
+  metadata: AssistantMetadata;
+  name?: string;
+}
+
 interface ChatStateContextType {
   threadId: string | null;
   setThreadId: (id: string | null) => void;
@@ -9,6 +28,8 @@ interface ChatStateContextType {
   setHideToolCalls: (hide: boolean) => void;
   chatHistoryOpen: boolean;
   setChatHistoryOpen: (open: boolean | ((prev: boolean) => boolean)) => void;
+  assistantInfo: AssistantInfo | null;
+  setAssistantInfo: (info: AssistantInfo | null) => void;
 }
 
 const ChatStateContext = createContext<ChatStateContextType | undefined>(undefined);
@@ -22,6 +43,7 @@ export function ChatStateProvider({ children, initialThreadId = null }: ChatStat
   const [threadId, setThreadId] = useState<string | null>(initialThreadId);
   const [hideToolCalls, setHideToolCalls] = useState(false);
   const [chatHistoryOpen, setChatHistoryOpen] = useState(false);
+  const [assistantInfo, setAssistantInfo] = useState<AssistantInfo | null>(null);
 
   const handleSetChatHistoryOpen = useCallback((value: boolean | ((prev: boolean) => boolean)) => {
     if (typeof value === "function") {
@@ -40,6 +62,8 @@ export function ChatStateProvider({ children, initialThreadId = null }: ChatStat
         setHideToolCalls,
         chatHistoryOpen,
         setChatHistoryOpen: handleSetChatHistoryOpen,
+        assistantInfo,
+        setAssistantInfo,
       }}
     >
       {children}

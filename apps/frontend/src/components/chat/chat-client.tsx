@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, FormEvent } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { ArrowLeft, Send, Clock, ArrowDown, Paperclip, LoaderCircle } from "lucide-react";
+import { ArrowLeft, Send, Clock, ArrowDown, Paperclip, LoaderCircle, Wrench } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button-v2";
 import { cn } from "@/lib/utils";
@@ -18,6 +18,9 @@ import { toast } from "sonner";
 import { useFileUpload } from "@/hooks/use-file-upload";
 import { ContentBlocksPreview } from "@/components/thread/content-blocks-preview";
 import { useIsMobile } from "@/hooks/common/use-mobile";
+import { useChatState } from "@/providers/chat-state-provider";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useSearchAssistantsAssistantsSearchPost } from "@/gen/hooks/use-search-assistants-assistants-search-post";
 
 // Agent configuration
 const AGENT_CONFIG: Record<string, { name: string }> = {
@@ -59,6 +62,26 @@ export function ChatClient({ agentId, chatId }: ChatClientProps) {
   const stream = useStreamContext();
   const messages = stream.messages;
   const isLoading = stream.isLoading;
+  const { hideToolCalls, setHideToolCalls, setAssistantInfo } = useChatState();
+
+  // Fetch assistant info for avatar
+  const { mutate: searchAssistants } = useSearchAssistantsAssistantsSearchPost();
+  
+  useEffect(() => {
+    searchAssistants({ data: { graph_id: agentId as any } }, {
+      onSuccess: (data) => {
+        if (data && data.length > 0) {
+          const assistant = data[0];
+          setAssistantInfo({
+            assistant_id: assistant.assistant_id,
+            graph_id: assistant.graph_id,
+            metadata: assistant.metadata as any,
+            name: assistant.name,
+          });
+        }
+      }
+    });
+  }, [agentId, searchAssistants, setAssistantInfo]);
 
   const config = AGENT_CONFIG[agentId] || DEFAULT_AGENT;
   const chatTitle = chatId === "new" ? "New Chat" : `Chat with ${config.name}`;
@@ -234,6 +257,8 @@ export function ChatClient({ agentId, chatId }: ChatClientProps) {
           <div className="flex flex-col gap-4">
             {messages
               .filter((m) => !m.id?.startsWith(DO_NOT_RENDER_ID_PREFIX))
+              // Filter out tool messages - they are now shown inline with their AI message's tool calls
+              .filter((m) => m.type !== "tool")
               .map((message, index) =>
                 message.type === "human" ? (
                   <HumanMessage
@@ -341,6 +366,27 @@ export function ChatClient({ agentId, chatId }: ChatClientProps) {
                     accept="image/jpeg,image/png,image/gif,image/webp,application/pdf"
                     className="hidden"
                   />
+                  
+                  {/* Toggle hide tools button */}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => setHideToolCalls(!hideToolCalls)}
+                        className={cn(
+                          "flex h-8 w-8 items-center justify-center rounded-lg transition-colors",
+                          hideToolCalls 
+                            ? "bg-primary/10 text-primary" 
+                            : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                        )}
+                      >
+                        <Wrench className="h-4 w-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {hideToolCalls ? "Show tool calls" : "Hide tool calls"}
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
 
                 {/* Send/Cancel button */}
