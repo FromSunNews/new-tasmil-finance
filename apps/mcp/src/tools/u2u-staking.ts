@@ -63,17 +63,27 @@ export function registerU2UStakingTools(server: McpServer) {
           }),
         });
 
+        // Serialize BigInt values to strings for JSON
+        const serializedTxData = {
+          ...txData,
+          value: txData.value.toString(),
+          gas: txData.gas?.toString(),
+          gasPrice: txData.gasPrice?.toString(),
+          maxFeePerGas: txData.maxFeePerGas?.toString(),
+          maxPriorityFeePerGas: txData.maxPriorityFeePerGas?.toString(),
+        };
+
         return {
           content: [
             {
               type: 'text',
               text: JSON.stringify({
                 success: true,
-                action: 'u2u_staking_delegate',
+                action: 'delegate',
                 validatorID: args.validatorID,
                 amount: args.amount,
                 amountFormatted: `${args.amount} U2U`,
-                transactionData: serializeTx(txData),
+                transactionData: serializedTxData,
                 message: `Ready to stake ${args.amount} U2U to validator ${args.validatorID}`,
                 requiresWallet: true,
                 requiresConfirmation: true,
@@ -119,6 +129,16 @@ export function registerU2UStakingTools(server: McpServer) {
           }),
         });
 
+        // Serialize BigInt values to strings for JSON
+        const serializedTxData = {
+          ...txData,
+          value: txData.value.toString(),
+          gas: txData.gas?.toString(),
+          gasPrice: txData.gasPrice?.toString(),
+          maxFeePerGas: txData.maxFeePerGas?.toString(),
+          maxPriorityFeePerGas: txData.maxPriorityFeePerGas?.toString(),
+        };
+
         return {
           content: [
             {
@@ -129,7 +149,7 @@ export function registerU2UStakingTools(server: McpServer) {
                 validatorID: args.validatorID,
                 amount: args.amount,
                 wrID: wrID.toString(),
-                transactionData: serializeTx(txData),
+                transactionData: serializedTxData,
                 message: `Ready to unstake ${args.amount} U2U from validator ${args.validatorID}`,
                 requiresWallet: true,
                 requiresConfirmation: true,
@@ -171,6 +191,16 @@ export function registerU2UStakingTools(server: McpServer) {
           }),
         });
 
+        // Serialize BigInt values to strings for JSON
+        const serializedTxData = {
+          ...txData,
+          value: txData.value.toString(),
+          gas: txData.gas?.toString(),
+          gasPrice: txData.gasPrice?.toString(),
+          maxFeePerGas: txData.maxFeePerGas?.toString(),
+          maxPriorityFeePerGas: txData.maxPriorityFeePerGas?.toString(),
+        };
+
         return {
           content: [
             {
@@ -179,7 +209,7 @@ export function registerU2UStakingTools(server: McpServer) {
                 success: true,
                 action: 'u2u_staking_claim_rewards',
                 validatorID: args.validatorID,
-                transactionData: serializeTx(txData),
+                transactionData: serializedTxData,
                 message: `Ready to claim rewards from validator ${args.validatorID}`,
                 requiresWallet: true,
                 requiresConfirmation: true,
@@ -221,6 +251,16 @@ export function registerU2UStakingTools(server: McpServer) {
           }),
         });
 
+        // Serialize BigInt values to strings for JSON
+        const serializedTxData = {
+          ...txData,
+          value: txData.value.toString(),
+          gas: txData.gas?.toString(),
+          gasPrice: txData.gasPrice?.toString(),
+          maxFeePerGas: txData.maxFeePerGas?.toString(),
+          maxPriorityFeePerGas: txData.maxPriorityFeePerGas?.toString(),
+        };
+
         return {
           content: [
             {
@@ -229,7 +269,7 @@ export function registerU2UStakingTools(server: McpServer) {
                 success: true,
                 action: 'u2u_staking_restake_rewards',
                 validatorID: args.validatorID,
-                transactionData: serializeTx(txData),
+                transactionData: serializedTxData,
                 message: `Ready to restake rewards for validator ${args.validatorID}`,
                 requiresWallet: true,
                 requiresConfirmation: true,
@@ -275,6 +315,16 @@ export function registerU2UStakingTools(server: McpServer) {
           }),
         });
 
+        // Serialize BigInt values to strings for JSON
+        const serializedTxData = {
+          ...txData,
+          value: txData.value.toString(),
+          gas: txData.gas?.toString(),
+          gasPrice: txData.gasPrice?.toString(),
+          maxFeePerGas: txData.maxFeePerGas?.toString(),
+          maxPriorityFeePerGas: txData.maxPriorityFeePerGas?.toString(),
+        };
+
         return {
           content: [
             {
@@ -285,7 +335,7 @@ export function registerU2UStakingTools(server: McpServer) {
                 validatorID: args.validatorID,
                 amount: args.amount,
                 lockupDurationDays: durationDays,
-                transactionData: serializeTx(txData),
+                transactionData: serializedTxData,
                 message: `Ready to lock ${args.amount} U2U for ${durationDays} days on validator ${args.validatorID}`,
                 requiresWallet: true,
                 requiresConfirmation: true,
