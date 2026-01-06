@@ -15,6 +15,21 @@ import { U2U_SFC_CONTRACT, SFC_ABI } from '../utils/contracts.js';
 const U2U_CHAIN_ID = 39; // U2U Solaris Mainnet
 
 /**
+ * Helper to serialize transaction data (BigInt to string)
+ */
+function serializeTx(tx: any) {
+  return {
+    ...tx,
+    value: tx.value?.toString(),
+    gas: tx.gas?.toString(),
+    gasPrice: tx.gasPrice?.toString(),
+    maxFeePerGas: tx.maxFeePerGas?.toString(),
+    maxPriorityFeePerGas: tx.maxPriorityFeePerGas?.toString(),
+  };
+}
+
+
+/**
  * Register all U2U staking tools with the MCP server
  */
 export function registerU2UStakingTools(server: McpServer) {
@@ -382,7 +397,7 @@ export function registerU2UStakingTools(server: McpServer) {
                   raw: stakeAmount.toString(),
                   formatted: formatEther(stakeAmount) + ' U2U',
                 },
-              }, null, 2),
+              }, (key, value) => typeof value === 'bigint' ? value.toString() : value, 2),
             },
           ],
         };
@@ -438,7 +453,7 @@ export function registerU2UStakingTools(server: McpServer) {
                   raw: unlockedAmount.toString(),
                   formatted: formatEther(unlockedAmount) + ' U2U',
                 },
-              }, null, 2),
+              }, (key, value) => typeof value === 'bigint' ? value.toString() : value, 2),
             },
           ],
         };
@@ -494,7 +509,7 @@ export function registerU2UStakingTools(server: McpServer) {
                   raw: rewardsAmount.toString(),
                   formatted: formatEther(rewardsAmount) + ' U2U',
                 },
-              }, null, 2),
+              }, (key, value) => typeof value === 'bigint' ? value.toString() : value, 2),
             },
           ],
         };
@@ -550,7 +565,7 @@ export function registerU2UStakingTools(server: McpServer) {
                   raw: stashAmount.toString(),
                   formatted: formatEther(stashAmount) + ' U2U',
                 },
-              }, null, 2),
+              }, (key, value) => typeof value === 'bigint' ? value.toString() : value, 2),
             },
           ],
         };
@@ -617,7 +632,7 @@ export function registerU2UStakingTools(server: McpServer) {
                   duration: duration.toString(),
                   fromEpoch: fromEpoch.toString()
                 },
-              }, null, 2),
+              }, (key, value) => typeof value === 'bigint' ? value.toString() : value, 2),
             },
           ],
         };

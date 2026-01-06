@@ -105,4 +105,39 @@ export async function query(params: {
 
   return data;
 }
+/**
+ * Simulate a transaction execution (via eth_estimateGas)
+ * Returns success/gas estimate or failure reason
+ * 
+ * @param params - Simulation parameters
+ * @param params.chainId - The chain ID
+ * @param params.to - Target address
+ * @param params.value - Optional value in wei
+ * @param params.data - Optional call data
+ * @param params.from - Optional sender address
+ * @param params.rpcUrl - Optional custom RPC URL
+ */
+export async function simulate_txn(params: {
+  chainId: number;
+  to: `0x${string}`;
+  value?: bigint;
+  data?: `0x${string}`;
+  from?: `0x${string}`;
+  rpcUrl?: string;
+}): Promise<{ success: boolean; gasEstimate?: string; error?: string }> {
+  try {
+    const client = getClient(params.chainId, params.rpcUrl);
+    
+    const estimate = await client.estimateGas({
+        account: params.from,
+        to: params.to,
+        value: params.value,
+        data: params.data
+    });
+
+    return { success: true, gasEstimate: estimate.toString() };
+  } catch (e) {
+    return { success: false, error: (e as Error).message };
+  }
+}
 
