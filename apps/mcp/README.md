@@ -13,6 +13,7 @@ This MCP server provides **31+ tools** across multiple specialized agents for bl
    - `submit_transaction` - Submit signed transactions
    - `query_contract` - Read-only contract calls
    - `get_supported_chains` - List supported networks
+   - `simulate_transaction` - Simulate a transaction
 
 2. **Owlto Agent** (`owlto_agent`) - Cross-chain bridging
    - `owlto_get_bridge_routes` - Get available bridge pairs
@@ -20,14 +21,13 @@ This MCP server provides **31+ tools** across multiple specialized agents for bl
 
 3. **U2 Staking Agent** (`u2_staking_agent`) - Staking operations
    - **Transaction Tools**: `u2u_staking_delegate`, `u2u_staking_undelegate`, `u2u_staking_claim_rewards`, `u2u_staking_restake_rewards`, `u2u_staking_lock_stake`
-   - **Query Tools**: `u2u_staking_get_user_stake`, `u2u_staking_get_unlocked_stake`, `u2u_staking_get_pending_rewards`, etc.
+   - **Query Tools**: `u2u_staking_get_user_stake`, `u2u_staking_get_unlocked_stake`, `u2u_staking_get_pending_rewards`, `u2u_staking_get_rewards_stash`, `u2u_staking_get_lockup_info`
 
-4. **Insight Agent** (`insight_agent`) - Analytics and queries
-   - Token information & balances
-   - Market data (price, cap, volume)
-   - Liquidity pool search
-   - Network stats
-
+4. **Insight Agent** (`insight_agent`) 
+   - `insight_get_token_info`
+   - `insight_get_token_price`
+   - `insight_get_token_balance`
+   - `insight_get_gas_price`
 ## Architecture
 
 This server uses **Express.js** as the transport layer (`StreamableHTTPServerTransport`) for the MCP protocol, allowing it to be deployed as a standard HTTP web service.
