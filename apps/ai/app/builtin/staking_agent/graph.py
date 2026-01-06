@@ -69,16 +69,67 @@ def parse_mcp_result(result: str) -> dict:
     return {"success": True, "message": str(result)}
 
 
+def filter_messages_for_openai(messages: list[BaseMessage]) -> list[BaseMessage]:
+    """Filter and reorder messages to comply with OpenAI's tool message requirements.
+    
+    OpenAI requires:
+    1. Tool messages must have a preceding AI message with matching tool_calls
+    2. Tool messages should follow immediately after the AI message with tool_calls
+    3. ALL tool_calls in an AI message must have corresponding tool responses
+    
+    This handles injected tool messages (like staking-transaction-result) that were
+    added externally without a corresponding tool_call.
+    """
+    # First pass: collect all tool messages by tool_call_id
+    tool_msgs_by_id = {}
+    for msg in messages:
+        if isinstance(msg, ToolMessage):
+            tc_id = msg.tool_call_id
+            if tc_id not in tool_msgs_by_id:
+                tool_msgs_by_id[tc_id] = msg
+    
+    # Second pass: build filtered list
+    filtered = []
+    used_tool_call_ids = set()
+    
+    for msg in messages:
+        if isinstance(msg, ToolMessage):
+            # Skip - we'll add tool messages right after their AI message
+            continue
+        
+        filtered.append(msg)
+        
+        # If this is an AI message with tool_calls, add corresponding tool responses
+        if hasattr(msg, 'tool_calls') and msg.tool_calls:
+            for tc in msg.tool_calls:
+                tc_id = tc.get('id')
+                if tc_id and tc_id in tool_msgs_by_id and tc_id not in used_tool_call_ids:
+                    filtered.append(tool_msgs_by_id[tc_id])
+                    used_tool_call_ids.add(tc_id)
+                elif tc_id and tc_id not in tool_msgs_by_id:
+                    # Missing tool response - this AI message's tool_calls are incomplete
+                    # Remove this AI message and skip its tool_calls
+                    filtered.pop()
+                    logger.warning("removing_ai_message_with_missing_tool_response", 
+                                 tool_call_id=tc_id)
+                    break
+    
+    return filtered
+
+
 async def agent_node(state: State) -> dict:
     """Agent node: call model, execute tools, emit UI."""
     model = init_chat_model("gpt-4.1-mini")
     mcp = MultiServerMCPClient({"blockchain": {"url": MCP_SERVER_URL, "transport": "streamable_http"}})
     
+    # Filter and reorder messages to comply with OpenAI API requirements
+    filtered_messages = filter_messages_for_openai(state["messages"])
+    
     async with mcp.session("blockchain") as session:
         tools = await load_mcp_tools(session)
         response = await model.bind_tools(tools).ainvoke([
             {"role": "system", "content": SYSTEM_PROMPT},
-            *state["messages"]
+            *filtered_messages
         ])
         
         messages = [response]
