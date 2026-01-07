@@ -5,7 +5,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import express from "express";
 import { Request, Response } from "express";
 import { z } from "zod";
-import { build_txn, submit_txn, query } from "./index.js";
+import { build_txn, submit_txn, query, simulate_txn } from "./index.js";
 import { SUPPORTED_CHAINS } from "./chains.js";
 import { registerOwltoTools } from "./src/tools/owlto.js";
 import { registerU2UStakingTools } from "./src/tools/u2u-staking.js";
@@ -248,6 +248,39 @@ function getServer(){
         }
     );
 
+    // Register simulate_transaction tool
+    server.registerTool(
+        "simulate_transaction",
+        {
+            description: "Simulate a transaction to check if it succeeds and estimate gas. Use this before submitting to verify correctness.",
+            inputSchema: {
+                chainId: z.number().describe("Chain ID"),
+                to: z.string().describe("Target address"),
+                value: z.string().optional().describe("Value in wei (default 0)"),
+                data: z.string().optional().describe("Call data (0x hex)"),
+                from: z.string().optional().describe("Sender address (optional, for permission checks)"),
+            },
+        },
+        async ({ chainId, to, value, data, from }) => {
+            const result = await simulate_txn({
+                chainId,
+                to: to as `0x${string}`,
+                value: value ? BigInt(value) : 0n,
+                data: data as `0x${string}`,
+                from: from as `0x${string}`
+            });
+
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: JSON.stringify(result, null, 2),
+                    },
+                ],
+            };
+        }
+    );
+
     // Register get_supported_chains tool
     server.registerTool(
         "get_supported_chains",
@@ -281,41 +314,53 @@ function getServer(){
     return server;
 }
 
-const app = express();
-app.use(express.json());
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 
-app.post("/mcp", async (req: Request, res: Response) => {
-    try {
-    const server = getServer();
-    const transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: undefined
-    });
-    res.on("close", () => {
-        console.log("Client disconnected");
-        transport.close();
-        server.close();
-    });
-
-    await server.connect(transport);
-    await transport.handleRequest(req, res, req.body);
-    } catch (error) {
-        console.error("Error in /mcp endpoint:", error);
-        if(!res.headersSent) {
-            res.status(500).json({ 
-                jsonRpc: "2.0",
-                error: {
-                    code: -32603,
-                    message: "Internal Server Error",
-                },
-                id: null,
-            });
-        }
+const args = process.argv.slice(2);
+if (args.includes("--stdio")) {
+    async function runStdio() {
+        const server = getServer();
+        const transport = new StdioServerTransport();
+        await server.connect(transport);
+        console.error("MCP server running in stdio mode.");
     }
-    
-    
-});
+    runStdio().catch(console.error);
+} else {
+    const app = express();
+    app.use(express.json());
 
-const port = 3008;
-app.listen(port, () => {
-    console.log(`Server is running on port ${port}`);
-});
+    app.post("/mcp", async (req: Request, res: Response) => {
+        try {
+            const server = getServer();
+            const transport = new StreamableHTTPServerTransport({
+                sessionIdGenerator: undefined
+            });
+            
+            res.on("close", () => {
+                console.log("Client disconnected");
+                transport.close();
+                server.close();
+            });
+
+            await server.connect(transport);
+            await transport.handleRequest(req, res, req.body);
+        } catch (error) {
+            console.error("Error in /mcp endpoint:", error);
+            if(!res.headersSent) {
+                res.status(500).json({ 
+                    jsonRpc: "2.0",
+                    error: {
+                        code: -32603,
+                        message: "Internal Server Error",
+                    },
+                    id: null,
+                });
+            }
+        }
+    });
+
+    const port = 3008;
+    app.listen(port, () => {
+        console.log(`Server is running on port ${port}`);
+    });
+}
