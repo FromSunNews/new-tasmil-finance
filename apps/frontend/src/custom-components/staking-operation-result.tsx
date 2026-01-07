@@ -5,51 +5,19 @@ import {
   ArrowUpRight,
   CheckCircle,
   Coins,
-  TrendingUp,
-  Lock,
-  DollarSign,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { StakingOperation } from "./staking-operation";
 
 interface StakingOperationResultProps {
   result: any;
   toolType: string;
+  toolCallId?: string;
+  onTransactionSuccess?: (
+    hash: string,
+    operation: string,
+    toolCallId?: string
+  ) => void;
 }
-
-const getOperationIcon = (action: string) => {
-  switch (action) {
-    case "delegate":
-      return <Coins className="h-5 w-5 text-primary" />;
-    case "undelegate":
-      return <TrendingUp className="h-5 w-5 text-orange-500" />;
-    case "claimRewards":
-      return <CheckCircle className="h-5 w-5 text-green-500" />;
-    case "restakeRewards":
-      return <TrendingUp className="h-5 w-5 text-blue-500" />;
-    case "lockStake":
-      return <Lock className="h-5 w-5 text-purple-500" />;
-    default:
-      return <Coins className="h-5 w-5 text-primary" />;
-  }
-};
-
-const getOperationTitle = (action: string) => {
-  switch (action) {
-    case "delegate":
-      return "Delegate Stake";
-    case "undelegate":
-      return "Undelegate Stake";
-    case "claimRewards":
-      return "Claim Rewards";
-    case "restakeRewards":
-      return "Restake Rewards";
-    case "lockStake":
-      return "Lock Stake";
-    default:
-      return "Staking Operation";
-  }
-};
 
 const ErrorResult = ({ error }: { error: string }) => (
   <div className="rounded-xl border border-destructive/30 bg-gradient-to-br from-destructive/5 via-destructive/10 to-destructive/5 p-5 shadow-sm">
@@ -119,7 +87,7 @@ const TransactionCompletedResult = ({ result }: { result: any }) => {
           </div>
         </div>
         <div className="rounded-md border border-green-500/30 bg-green-500/20 p-3">
-          <p className="text-green-700 text-sm">
+          <p className="text-green-700 dark:text-green-300 text-sm">
             {result.message?.split("\n\n")[0] || "Transaction completed successfully"}
           </p>
         </div>
@@ -128,114 +96,89 @@ const TransactionCompletedResult = ({ result }: { result: any }) => {
   );
 };
 
-const OperationPendingResult = ({ operation }: { operation: any }) => {
-  return (
-    <div className="rounded-lg border bg-card p-6 shadow-sm w-full">
-      <div className="mb-4 flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-          {getOperationIcon(operation.action)}
-        </div>
-        <div className="space-y-1">
-          <h3 className="text-base font-semibold">{getOperationTitle(operation.action)}</h3>
-          <p className="text-muted-foreground text-sm">
-            {operation.message || "Ready to execute"}
-          </p>
-        </div>
-      </div>
-
-      <div className="space-y-3">
-        {/* Operation Details */}
-        <div className="space-y-2 text-sm">
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Validator ID</span>
-            <span className="font-semibold">{operation.validatorID}</span>
-          </div>
-
-          {operation.amount && (
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Amount</span>
-              <span className="font-semibold">{operation.amountFormatted || operation.amount}</span>
-            </div>
-          )}
-
-          {operation.wrID && (
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Withdrawal Request ID</span>
-              <span className="font-semibold">{operation.wrID}</span>
-            </div>
-          )}
-
-          {operation.lockupDurationDays && (
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Lockup Duration</span>
-              <span className="font-semibold">{operation.lockupDurationDays} days</span>
-            </div>
-          )}
-        </div>
-
-        {/* Wallet Connection Notice */}
-        {operation.requiresWallet && (
-          <div className="rounded-md border border-yellow-500/30 bg-yellow-500/10 p-3">
-            <div className="flex items-center gap-2 text-yellow-700 text-sm">
-              <AlertCircle className="h-4 w-4" />
-              <span>Wallet connection required to execute this operation</span>
-            </div>
-          </div>
-        )}
-
-        {/* Confirmation Notice */}
-        {operation.requiresConfirmation && (
-          <div className="rounded-md border border-blue-500/30 bg-blue-500/10 p-3">
-            <p className="text-blue-700 text-sm">
-              Please confirm the transaction in your wallet when prompted.
-            </p>
-          </div>
-        )}
-
-        {/* Action Button (Disabled in chat UI - for display only) */}
-        <Button
-          className="w-full"
-          disabled
-          variant="outline"
-        >
-          Execute in Wallet
-        </Button>
-        <p className="text-xs text-muted-foreground text-center">
-          This operation requires wallet integration
-        </p>
-      </div>
-    </div>
-  );
-};
-
 export default function StakingOperationResult({
   result,
   toolType,
+  toolCallId,
+  onTransactionSuccess,
 }: StakingOperationResultProps) {
   if (!result) return null;
 
   // Handle error
   if (!result.success) {
     return (
-      <div className="p-4">
         <ErrorResult error={result.error} />
-      </div>
     );
   }
 
   // Handle transaction completed
   if (result.transactionCompleted && result.hash) {
     return (
-      <div className="p-4">
         <TransactionCompletedResult result={result} />
-      </div>
     );
   }
 
-  // Handle operation pending (ready to execute)
+  // Handle transaction success callback
+  const handleTransactionSuccess = (transactionResult: {
+    hash: string;
+    success: boolean;
+    message: string;
+  }) => {
+    if (transactionResult.success && transactionResult.hash) {
+      onTransactionSuccess?.(
+        transactionResult.hash,
+        result.action || toolType,
+        toolCallId
+      );
+    }
+  };
+
+  // Render StakingOperation component for all staking operations
+  // Support both naming conventions: tool-delegateStake and tool-u2u_staking_delegate
+  const stakingOperations = [
+    "tool-delegateStake",
+    "tool-undelegateStake", 
+    "tool-claimRewards",
+    "tool-restakeRewards",
+    "tool-lockStake",
+    // U2U staking tool names
+    "tool-u2u_staking_delegate",
+    "tool-u2u_staking_undelegate",
+    "tool-u2u_staking_claim_rewards",
+    "tool-u2u_staking_restake_rewards",
+    "tool-u2u_staking_lock_stake",
+  ];
+
+  // Check if this is a staking operation that requires wallet interaction
+  if (stakingOperations.includes(toolType) || result.requiresWallet) {
+    return (
+        <StakingOperation
+          toolCallId={toolCallId}
+          onSuccess={handleTransactionSuccess}
+          operation={result}
+        />
+    );
+  }
+
+  // Fallback: Display raw JSON
   return (
-    <div className="p-4">
-      <OperationPendingResult operation={result} />
+    <div className="rounded-lg border p-6 shadow-sm">
+      <div className="mb-4 flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+          <Coins className="h-5 w-5 text-muted-foreground" />
+        </div>
+        <div className="space-y-1">
+          <h3 className="text-base font-semibold">Staking Operation</h3>
+          <p className="text-muted-foreground text-sm">Operation Result</p>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="rounded-md bg-muted/50 p-4">
+          <pre className="overflow-x-auto text-xs">
+            {JSON.stringify(result, null, 2)}
+          </pre>
+        </div>
+      </div>
     </div>
   );
 }

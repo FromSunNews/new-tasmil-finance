@@ -173,11 +173,8 @@ export function ToolCall({
       </CollapsibleTrigger>
 
       <CollapsibleContent>
-        {/* Input/Parameters */}
-        {input &&
-          (state === "input-available" ||
-            state === "approval-requested" ||
-            state === "approval-responded") && (
+        {/* Input/Parameters - show for all states except streaming and error */}
+        {input && state !== "input-streaming" && state !== "output-error" && (
             <div className="space-y-2 border-border border-t p-4">
               <h4 className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
                 Parameters

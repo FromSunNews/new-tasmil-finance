@@ -13,6 +13,7 @@ This MCP server provides **31+ tools** across multiple specialized agents for bl
    - `submit_transaction` - Submit signed transactions
    - `query_contract` - Read-only contract calls
    - `get_supported_chains` - List supported networks
+   - `simulate_transaction` - Simulate a transaction
 
 2. **Owlto Agent** (`owlto_agent`) - Cross-chain bridging
    - `owlto_get_bridge_routes` - Get available bridge pairs
@@ -20,14 +21,13 @@ This MCP server provides **31+ tools** across multiple specialized agents for bl
 
 3. **U2 Staking Agent** (`u2_staking_agent`) - Staking operations
    - **Transaction Tools**: `u2u_staking_delegate`, `u2u_staking_undelegate`, `u2u_staking_claim_rewards`, `u2u_staking_restake_rewards`, `u2u_staking_lock_stake`
-   - **Query Tools**: `u2u_staking_get_user_stake`, `u2u_staking_get_unlocked_stake`, `u2u_staking_get_pending_rewards`, etc.
+   - **Query Tools**: `u2u_staking_get_user_stake`, `u2u_staking_get_unlocked_stake`, `u2u_staking_get_pending_rewards`, `u2u_staking_get_rewards_stash`, `u2u_staking_get_lockup_info`
 
-4. **Insight Agent** (`insight_agent`) - Analytics and queries
-   - Token information & balances
-   - Market data (price, cap, volume)
-   - Liquidity pool search
-   - Network stats
-
+4. **Insight Agent** (`insight_agent`) 
+   - `insight_get_token_info`
+   - `insight_get_token_price`
+   - `insight_get_token_balance`
+   - `insight_get_gas_price`
 ## Architecture
 
 This server uses **Express.js** as the transport layer (`StreamableHTTPServerTransport`) for the MCP protocol, allowing it to be deployed as a standard HTTP web service.
@@ -84,10 +84,47 @@ Tools are prefixed by protocol/domain to ensure uniqueness:
 - `u2u_staking_*`
 - `insight_*`
 
+## Recent Updates
+
+- **Transaction Simulation**: Added `simulate_transaction` tool to verify transactions (using `eth_estimateGas`) before submission.
+- **Robust Price Data**: Switched to **CryptoCompare** as primary source for token prices (e.g., U2U) with CoinGecko as backup, removing unreliable DexScreener fallback.
+- **Stability**: Fixed BigInt serialization issues in staking tools to ensure correct JSON responses.
+
+## Usage with Claude Desktop
+
+To verify the MCP server logic directly within Claude Desktop:
+
+### 1. Configuration
+Ensure your `claude_desktop_config.json` points to the build:
+```json
+{
+  "mcpServers": {
+    "u2u_defi": {
+      "command": "node",
+      "args": ["/absolute/path/to/apps/mcp/dist/server.js", "--stdio"]
+    }
+  }
+}
+```
+
+### 2. Verification Flow (Copy-Paste)
+
+You can ask Claude to run this entire test sequence to verify the server handles the full lifecycle of a transaction:
+
+> **"Please run a full test of the U2U Staking flow:**
+> 1. **Check Balance**: Get the native U2U balance for `0x7378Ee97ed71210dbFE60E4bb7d3bc5612f439e7`.
+> 2. **Build Delegation**: Create a transaction to stake 10^-10 U2U to validator 1.
+> 3. **Simulate**: Take the transaction data from step 2 and simulate it using `simulate_transaction` to verify it will succeed and check the gas estimate.
+> 4. **Report**: Summarize the gas estimate and validity."
+
+This flow confirms that the server can Read (Balance), Write (Build), and Verify (Simulate) correctly.
+
 ## Future Roadmap
 
 - [x] Full Owlto SDK integration
-- [x] Real-time market data integration for Insight agent (Basic CoinGecko support)
+- [x] Real-time market data integration for Insight agent
 - [x] Enhanced validation for staking parameters
-- [ ] Transaction simulation support
+- [x] Transaction simulation support
+- [ ] Integration with hardware wallets (Ledger/Trezor) via specialized client
+
 
