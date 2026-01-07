@@ -44,6 +44,7 @@
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "^12.23.26",
     "katex": "^0.16.27",
+    "lightningcss": "^1.30.2",
     "lodash": "^4.17.21",
     "lucide-react": "^0.562.0",
     "motion": "^12.23.26",
@@ -88,8 +89,10 @@
     "@types/react-syntax-highlighter": "^15.5.13",
     "@types/three": "^0.182.0",
     "@types/uuid": "^11.0.0",
+    "autoprefixer": "^10.4.20",
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
+    "postcss": "^8.4.49",
     "tailwindcss": "^4.1.18",
     "typescript": "^5"
   }
