@@ -46,7 +46,11 @@ Tools:
 - u2u_staking_get_user_stake(validatorID, delegatorAddress): Get staked amount
 - u2u_staking_get_pending_rewards(validatorID, delegatorAddress): Get rewards
 
-Rules: Don't ask for chain ID. Call tools immediately with available info."""
+Rules:
+- Don't ask for chain ID. Call tools immediately with available info.
+- When you see "WALLET TRANSACTION COMPLETED" in a tool response, it means the user has already signed and completed the transaction in their wallet. Respond with a clear confirmation message including the transaction details and explorer link.
+- IMPORTANT: When you see "WALLET TRANSACTION FAILED" in a tool response, the transaction DID NOT succeed. The user either rejected the transaction or an error occurred. You MUST acknowledge the failure and explain what went wrong. Do NOT say the transaction was successful.
+- Always check the most recent tool response for each operation to determine the actual outcome."""
 
 
 class State(TypedDict):
@@ -81,12 +85,67 @@ def filter_messages_for_openai(messages: list[BaseMessage]) -> list[BaseMessage]
     added externally without a corresponding tool_call.
     """
     # First pass: collect all tool messages by tool_call_id
+    # Use the LAST tool message for each tool_call_id (to get transaction results)
     tool_msgs_by_id = {}
     for msg in messages:
         if isinstance(msg, ToolMessage):
             tc_id = msg.tool_call_id
-            if tc_id not in tool_msgs_by_id:
+            msg_name = getattr(msg, 'name', '')
+            content_str = msg.content if isinstance(msg.content, str) else json.dumps(msg.content)
+            logger.info("filter_messages_tool_msg", tool_call_id=tc_id, name=msg_name, content_preview=content_str[:200])
+            
+            # Check if this is a transaction result (by name or by content)
+            is_tx_result = msg_name == 'staking-transaction-result'
+            
+            # Also check content for transaction result markers if name is not set
+            if not is_tx_result:
+                try:
+                    content_data = json.loads(content_str) if content_str.startswith('{') else {}
+                    # Check for transaction result markers in content
+                    if any([
+                        'contextMessage' in content_data,
+                        'explorerUrl' in content_data,
+                        'WALLET TRANSACTION' in content_str,
+                        content_data.get('success') is not None and 'hash' in content_data,
+                    ]):
+                        is_tx_result = True
+                        logger.info("detected_tx_result_by_content", tool_call_id=tc_id)
+                except:
+                    pass
+            
+            existing = tool_msgs_by_id.get(tc_id)
+            
+            if existing is None:
                 tool_msgs_by_id[tc_id] = msg
+            elif is_tx_result:
+                # Transaction result has priority - check if it's a failure
+                logger.info("merging_transaction_result", tool_call_id=tc_id)
+                try:
+                    existing_content = existing.content if isinstance(existing.content, str) else json.dumps(existing.content)
+                    tx_content = msg.content if isinstance(msg.content, str) else json.dumps(msg.content)
+                    tx_data = json.loads(tx_content)
+                    
+                    # Check if transaction failed - if so, use failure message prominently
+                    is_failed = tx_data.get('success') is False
+                    
+                    if is_failed:
+                        # For failed transactions, make the failure message very clear
+                        merged_content = f"--- WALLET TRANSACTION FAILED ---\n{tx_data.get('contextMessage', tx_content)}\n\nOriginal tool response:\n{existing_content}"
+                        logger.info("merged_failed_transaction", merged_content_preview=merged_content[:300])
+                    else:
+                        # For successful transactions
+                        merged_content = f"{existing_content}\n\n--- WALLET TRANSACTION COMPLETED ---\n{tx_data.get('contextMessage', tx_content)}"
+                        logger.info("merged_success_transaction", merged_content_preview=merged_content[:300])
+                    
+                    # Create new tool message with merged content
+                    tool_msgs_by_id[tc_id] = ToolMessage(
+                        content=merged_content,
+                        tool_call_id=tc_id,
+                        name=existing.name
+                    )
+                except Exception as e:
+                    logger.warning("failed_to_merge_tool_messages", error=str(e))
+                    tool_msgs_by_id[tc_id] = msg
     
     # Second pass: build filtered list
     filtered = []
@@ -122,8 +181,22 @@ async def agent_node(state: State) -> dict:
     model = init_chat_model("gpt-4.1-mini")
     mcp = MultiServerMCPClient({"blockchain": {"url": MCP_SERVER_URL, "transport": "streamable_http"}})
     
+    # Log incoming messages
+    logger.info("agent_node_start", message_count=len(state["messages"]))
+    for i, msg in enumerate(state["messages"]):
+        msg_type = type(msg).__name__
+        content_preview = str(msg.content)[:100] if hasattr(msg, 'content') else 'N/A'
+        logger.info("incoming_message", index=i, type=msg_type, content_preview=content_preview)
+    
     # Filter and reorder messages to comply with OpenAI API requirements
     filtered_messages = filter_messages_for_openai(state["messages"])
+    
+    # Log filtered messages
+    logger.info("filtered_messages", count=len(filtered_messages))
+    for i, msg in enumerate(filtered_messages):
+        msg_type = type(msg).__name__
+        content_preview = str(msg.content)[:200] if hasattr(msg, 'content') else 'N/A'
+        logger.info("filtered_message", index=i, type=msg_type, content_preview=content_preview)
     
     async with mcp.session("blockchain") as session:
         tools = await load_mcp_tools(session)

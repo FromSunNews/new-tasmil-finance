@@ -21,9 +21,7 @@ import {
   useLockStake,
 } from "@/hooks/use-staking-operations";
 import { useStreamContext } from "@/providers/stream";
-
-// Prefix for messages that should not be rendered in UI
-const DO_NOT_RENDER_ID_PREFIX = "__do_not_render__";
+import { DO_NOT_RENDER_ID_PREFIX } from "@/lib/ensure-tool-responses";
 
 interface StakingOperationProps {
   toolCallId?: string;
@@ -77,27 +75,59 @@ export function StakingOperation({
   const restakeRewards = useRestakeRewards();
   const lockStake = useLockStake();
 
-  // Check for existing tool response on mount (restore state)
-  useEffect(() => {
-    if (typeof window === "undefined" || executionResult) return;
+  // Check for existing transaction result in local state (component handles its own state)
+  // The transaction result is stored in component state and persisted via the UI card itself
+
+  // Get effective toolCallId for saving/restoring state
+  const getEffectiveToolCallId = () => {
+    if (toolCallId) return toolCallId;
     
-    // If no toolCallId provided, try to find it from the AI message
-    let effectiveToolCallId = toolCallId;
+    // Find the AI message that has a tool_call matching current operation action
+    // Map operation action to tool names (support both short and full action names)
+    const actionToToolName: Record<string, string[]> = {
+      delegate: ["u2u_staking_delegate", "delegateStake"],
+      u2u_staking_delegate: ["u2u_staking_delegate", "delegateStake"],
+      undelegate: ["u2u_staking_undelegate", "undelegateStake"],
+      u2u_staking_undelegate: ["u2u_staking_undelegate", "undelegateStake"],
+      claimRewards: ["u2u_staking_claim_rewards", "claimRewards"],
+      u2u_staking_claim_rewards: ["u2u_staking_claim_rewards", "claimRewards"],
+      restakeRewards: ["u2u_staking_restake_rewards", "restakeRewards"],
+      u2u_staking_restake_rewards: ["u2u_staking_restake_rewards", "restakeRewards"],
+      lockStake: ["u2u_staking_lock_stake", "lockStake"],
+      u2u_staking_lock_stake: ["u2u_staking_lock_stake", "lockStake"],
+    };
     
-    if (!effectiveToolCallId) {
-      // Find the AI message that triggered this UI and get its tool_call_id
-      const aiMessage = thread.messages.find(
-        (msg) => msg.type === "ai" && (msg as any).tool_calls?.length > 0
-      );
-      if (aiMessage && (aiMessage as any).tool_calls?.[0]?.id) {
-        effectiveToolCallId = (aiMessage as any).tool_calls[0].id;
+    const toolNames = actionToToolName[operation.action] || [];
+    
+    // Find the LAST AI message with a matching tool call (most recent operation)
+    for (let i = thread.messages.length - 1; i >= 0; i--) {
+      const msg = thread.messages[i];
+      if (msg.type === "ai" && (msg as any).tool_calls?.length > 0) {
+        const matchingToolCall = (msg as any).tool_calls.find(
+          (tc: any) => toolNames.includes(tc.name)
+        );
+        if (matchingToolCall?.id) {
+          return matchingToolCall.id;
+        }
       }
     }
     
+    return null;
+  };
+
+  // Restore state from thread messages on mount
+  useEffect(() => {
+    if (typeof window === "undefined" || executionResult) return;
+    
+    const effectiveToolCallId = getEffectiveToolCallId();
     if (!effectiveToolCallId) return;
     
+    // Look for saved transaction result in tool messages with matching toolCallId
     const toolResponse = thread.messages.findLast(
-      (message) => message.type === "tool" && (message as any).tool_call_id === effectiveToolCallId
+      (message) => 
+        message.type === "tool" && 
+        (message as any).tool_call_id === effectiveToolCallId &&
+        (message as any).name === "staking-transaction-result"
     );
     
     if (toolResponse && toolResponse.content) {
@@ -107,54 +137,79 @@ export function StakingOperation({
           : JSON.stringify(toolResponse.content);
         const parsedContent: TransactionResult = JSON.parse(content);
         
-        // Only restore if it's a completed transaction (has hash)
-        if (parsedContent.hash) {
+        // Only restore if the action matches current operation (normalize action names)
+        const normalizeAction = (action: string) => {
+          const actionMap: Record<string, string> = {
+            u2u_staking_delegate: 'delegate',
+            u2u_staking_undelegate: 'undelegate',
+            u2u_staking_claim_rewards: 'claimRewards',
+            u2u_staking_restake_rewards: 'restakeRewards',
+            u2u_staking_lock_stake: 'lockStake',
+          };
+          return actionMap[action] || action;
+        };
+        
+        if ((parsedContent.hash || parsedContent.success === false) && 
+            normalizeAction(parsedContent.action) === normalizeAction(operation.action)) {
           setExecutionResult(parsedContent);
         }
       } catch {
         console.error("Failed to parse tool response content.");
       }
     }
-  }, [toolCallId, thread.messages]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [toolCallId, thread.messages, executionResult, operation.action]);
 
   const saveTransactionResult = (result: TransactionResult) => {
-    // Find effective toolCallId
-    let effectiveToolCallId = toolCallId;
-    
-    if (!effectiveToolCallId) {
-      const aiMessage = thread.messages.find(
-        (msg) => msg.type === "ai" && (msg as any).tool_calls?.length > 0
-      );
-      if (aiMessage && (aiMessage as any).tool_calls?.[0]?.id) {
-        effectiveToolCallId = (aiMessage as any).tool_calls[0].id;
-      }
-    }
+    const effectiveToolCallId = getEffectiveToolCallId();
     
     if (!effectiveToolCallId) {
       console.warn("No toolCallId found, cannot save transaction result");
       return;
     }
 
-    // Create a user-friendly message for the AI to respond to
-    const userMessage = result.success 
-      ? `Transaction completed successfully! Hash: ${result.hash}. Please provide a clear summary of what was accomplished.`
-      : `Transaction failed with error: ${result.message}. Please explain what went wrong and suggest next steps.`;
+    // Explorer URL for transaction
+    const explorerUrl = result.hash ? `https://u2uscan.xyz/tx/${result.hash}` : '';
 
-    // Submit the result to the thread to persist state and trigger AI response
+    // Create context message for AI to understand what happened (with markdown URL)
+    const contextMessage = result.success 
+      ? `✅ WALLET TRANSACTION COMPLETED
+
+**Transaction Details:**
+- Action: ${result.action}
+- Validator ID: ${result.validatorID}${result.amountFormatted ? `\n- Amount: ${result.amountFormatted}` : ''}
+- Transaction Hash: \`${result.hash}\`
+- Explorer: [View on U2UScan](${explorerUrl})
+
+Please provide a clear, friendly summary confirming the successful ${result.action} transaction to the user. Include the explorer link so they can verify.`
+      : `❌ WALLET TRANSACTION FAILED
+
+**Error Details:**
+- Action: ${result.action}
+- Validator ID: ${result.validatorID}${result.amountFormatted ? `\n- Amount: ${result.amountFormatted}` : ''}
+- Error: ${result.message}
+
+Please explain what went wrong in simple terms and suggest next steps the user can take.`;
+
+    // Submit tool message with transaction result - this will trigger AI to respond
+    // because it's a tool response that the agent needs to process
+    const toolMessage = {
+      type: "tool" as const,
+      tool_call_id: effectiveToolCallId,
+      id: `${DO_NOT_RENDER_ID_PREFIX}${uuidv4()}`,
+      name: "staking-transaction-result",
+      content: JSON.stringify({
+        ...result,
+        explorerUrl,
+        contextMessage,
+      }),
+    };
+    
+    console.log("[StakingOperation] Sending tool message:", toolMessage);
+    
     thread.submit(
       {
-        messages: [
-          {
-            type: "tool",
-            tool_call_id: effectiveToolCallId,
-            id: `${DO_NOT_RENDER_ID_PREFIX}${uuidv4()}`,
-            name: "staking-transaction-result",
-            content: JSON.stringify({
-              ...result,
-              userFriendlyMessage: userMessage,
-            }),
-          },
-        ],
+        messages: [toolMessage],
       },
       {
         streamMode: ["values"],
@@ -180,6 +235,7 @@ export function StakingOperation({
 
       switch (operation.action) {
         case "delegate":
+        case "u2u_staking_delegate":
           if (!operation.amount) {
             throw new Error("Amount is required for delegation");
           }
@@ -187,6 +243,7 @@ export function StakingOperation({
           break;
 
         case "undelegate":
+        case "u2u_staking_undelegate":
           if (!operation.amount || !operation.wrID) {
             throw new Error(
               "Amount and withdrawal request ID are required for undelegation"
@@ -200,14 +257,17 @@ export function StakingOperation({
           break;
 
         case "claimRewards":
+        case "u2u_staking_claim_rewards":
           result = await claimRewards.claimRewards(validatorID);
           break;
 
         case "restakeRewards":
+        case "u2u_staking_restake_rewards":
           result = await restakeRewards.restakeRewards(validatorID);
           break;
 
         case "lockStake":
+        case "u2u_staking_lock_stake":
           if (!operation.amount || !operation.lockupDuration) {
             throw new Error(
               "Amount and lockup duration are required for locking stake"
@@ -268,14 +328,19 @@ export function StakingOperation({
   const getOperationIcon = () => {
     switch (operation.action) {
       case "delegate":
+      case "u2u_staking_delegate":
         return <Coins className="h-5 w-5 text-primary" />;
       case "undelegate":
+      case "u2u_staking_undelegate":
         return <TrendingUp className="h-5 w-5 text-orange-500" />;
       case "claimRewards":
+      case "u2u_staking_claim_rewards":
         return <CheckCircle className="h-5 w-5 text-green-500" />;
       case "restakeRewards":
+      case "u2u_staking_restake_rewards":
         return <TrendingUp className="h-5 w-5 text-blue-500" />;
       case "lockStake":
+      case "u2u_staking_lock_stake":
         return <Lock className="h-5 w-5 text-purple-500" />;
       default:
         return <Coins className="h-5 w-5 text-primary" />;
@@ -285,14 +350,19 @@ export function StakingOperation({
   const getOperationTitle = () => {
     switch (operation.action) {
       case "delegate":
+      case "u2u_staking_delegate":
         return "Delegate Stake";
       case "undelegate":
+      case "u2u_staking_undelegate":
         return "Undelegate Stake";
       case "claimRewards":
+      case "u2u_staking_claim_rewards":
         return "Claim Rewards";
       case "restakeRewards":
+      case "u2u_staking_restake_rewards":
         return "Restake Rewards";
       case "lockStake":
+      case "u2u_staking_lock_stake":
         return "Lock Stake";
       default:
         return "Staking Operation";
@@ -303,14 +373,19 @@ export function StakingOperation({
     if (isExecuting) return "Processing...";
     switch (operation.action) {
       case "delegate":
+      case "u2u_staking_delegate":
         return "Stake U2U";
       case "undelegate":
+      case "u2u_staking_undelegate":
         return "Unstake U2U";
       case "claimRewards":
+      case "u2u_staking_claim_rewards":
         return "Claim Rewards";
       case "restakeRewards":
+      case "u2u_staking_restake_rewards":
         return "Restake Rewards";
       case "lockStake":
+      case "u2u_staking_lock_stake":
         return "Lock Stake";
       default:
         return "Execute";
@@ -344,12 +419,12 @@ export function StakingOperation({
     const explorerUrl = `https://u2uscan.xyz/tx/${executionResult.hash}`;
 
     return (
-      <div className="w-full rounded-lg border bg-card/40 p-6 shadow-sm">
+      <div className="rounded-lg border bg-card/40 p-6 shadow-sm max-w-sm">
         <div className="mb-4 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-500/10">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-500/10">
             <CheckCircle className="h-5 w-5 text-green-600" />
           </div>
-          <div className="space-y-1">
+          <div className="space-y-1 min-w-0">
             <h3 className="text-base font-semibold">Transaction Completed</h3>
             <p className="text-muted-foreground text-sm">
               {getOperationTitle()} was successful
@@ -399,41 +474,33 @@ export function StakingOperation({
   // Show failed transaction UI
   if (executionResult?.success === false) {
     return (
-      <div className="w-full rounded-lg border bg-card p-6 shadow-sm">
+      <div className="rounded-lg border bg-card p-6 shadow-sm max-w-sm">
         <div className="mb-4 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/10">
             <AlertCircle className="h-5 w-5 text-destructive" />
           </div>
-          <div className="space-y-1">
+          <div className="space-y-1 min-w-0">
             <h3 className="text-base font-semibold">Transaction Failed</h3>
             <p className="text-muted-foreground text-sm">{getOperationTitle()}</p>
           </div>
         </div>
 
-        <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 p-3">
-          <p className="text-destructive text-sm">{executionResult.message}</p>
+        <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 p-3 overflow-x-auto">
+          <p className="text-destructive text-sm whitespace-pre-wrap break-words">{executionResult.message}</p>
         </div>
-
-        <Button
-          onClick={() => setExecutionResult(null)}
-          variant="outline"
-          className="w-full"
-        >
-          Try Again
-        </Button>
       </div>
     );
   }
 
   // Show pending operation UI
   return (
-    <div className="w-full rounded-lg border bg-card p-6 shadow-sm">
+    <div className="rounded-lg border bg-card p-6 shadow-sm max-w-sm">
       {/* Header */}
       <div className="mb-4 flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
           {getOperationIcon()}
         </div>
-        <div className="space-y-1">
+        <div className="space-y-1 min-w-0">
           <h3 className="text-base font-semibold">{getOperationTitle()}</h3>
           <p className="text-muted-foreground text-sm">{operation.message}</p>
         </div>
