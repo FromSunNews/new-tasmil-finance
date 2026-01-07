@@ -7,11 +7,20 @@ import {
   Coins,
 } from "lucide-react";
 import { StakingOperation } from "./staking-operation";
+import { useStreamContext } from "@/providers/stream";
 
 interface StakingOperationResultProps {
   result: any;
   toolType: string;
   toolCallId?: string;
+  // meta is passed from LoadExternalComponent
+  meta?: {
+    ui?: {
+      metadata?: {
+        message_id?: string;
+      };
+    };
+  };
   onTransactionSuccess?: (
     hash: string,
     operation: string,
@@ -20,10 +29,10 @@ interface StakingOperationResultProps {
 }
 
 const ErrorResult = ({ error }: { error: string }) => (
-  <div className="rounded-xl border border-destructive/30 bg-gradient-to-br from-destructive/5 via-destructive/10 to-destructive/5 p-5 shadow-sm">
+  <div className="max-w-sm rounded-xl border border-destructive/30 bg-gradient-to-br from-destructive/5 via-destructive/10 to-destructive/5 p-5 shadow-sm">
     <div className="flex flex-row items-start gap-4">
       <div className="flex items-center justify-center mt-0.5">
-        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/15 ring-2 ring-destructive/20">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/15 ring-2 ring-destructive/20">
           <AlertCircle className="h-5 w-5 text-destructive" />
         </span>
       </div>
@@ -33,13 +42,9 @@ const ErrorResult = ({ error }: { error: string }) => (
             Transaction Failed
           </span>
         </div>
-        <p className="text-destructive/90 text-sm leading-relaxed break-words">
-          {error || "An unknown error occurred. Please try again."}
-        </p>
-        <div className="mt-2 pt-3 border-t border-destructive/20">
-          <p className="text-destructive/70 text-xs flex items-center gap-1.5">
-            <AlertCircle className="h-3 w-3" />
-            <span>Please check your wallet connection and try again</span>
+        <div className="overflow-x-auto">
+          <p className="text-destructive/90 text-sm leading-relaxed whitespace-pre-wrap break-words">
+            {error || "An unknown error occurred. Please try again."}
           </p>
         </div>
       </div>
@@ -54,7 +59,7 @@ const TransactionCompletedResult = ({ result }: { result: any }) => {
   const explorerUrl = result.hash ? `https://u2uscan.xyz/tx/${result.hash}` : "#";
 
   return (
-    <div className="rounded-lg bg-card/40 border p-6 shadow-sm w-full">
+    <div className="max-w-sm rounded-lg bg-card/40 border p-6 shadow-sm">
       <div className="mb-4 flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-500/10">
           <CheckCircle className="h-5 w-5 text-green-600" />
@@ -99,9 +104,55 @@ const TransactionCompletedResult = ({ result }: { result: any }) => {
 export default function StakingOperationResult({
   result,
   toolType,
-  toolCallId,
+  toolCallId: propToolCallId,
+  meta,
   onTransactionSuccess,
 }: StakingOperationResultProps) {
+  const thread = useStreamContext();
+  
+  // Extract toolCallId from the AI message that this UI component belongs to
+  // This ensures each StakingOperation component uses its own toolCallId
+  const getToolCallIdFromMessage = (): string | undefined => {
+    if (propToolCallId) return propToolCallId;
+    
+    const messageId = meta?.ui?.metadata?.message_id;
+    if (!messageId) return undefined;
+    
+    // Find the AI message with this ID
+    const aiMessage = thread.messages.find(
+      (m) => m.id === messageId && m.type === "ai"
+    );
+    
+    if (!aiMessage || !("tool_calls" in aiMessage) || !aiMessage.tool_calls?.length) {
+      return undefined;
+    }
+    
+    // Map action to tool names
+    const actionToToolName: Record<string, string[]> = {
+      delegate: ["u2u_staking_delegate", "delegateStake"],
+      u2u_staking_delegate: ["u2u_staking_delegate", "delegateStake"],
+      undelegate: ["u2u_staking_undelegate", "undelegateStake"],
+      u2u_staking_undelegate: ["u2u_staking_undelegate", "undelegateStake"],
+      claimRewards: ["u2u_staking_claim_rewards", "claimRewards"],
+      u2u_staking_claim_rewards: ["u2u_staking_claim_rewards", "claimRewards"],
+      restakeRewards: ["u2u_staking_restake_rewards", "restakeRewards"],
+      u2u_staking_restake_rewards: ["u2u_staking_restake_rewards", "restakeRewards"],
+      lockStake: ["u2u_staking_lock_stake", "lockStake"],
+      u2u_staking_lock_stake: ["u2u_staking_lock_stake", "lockStake"],
+    };
+    
+    const toolNames = actionToToolName[result?.action] || [];
+    
+    // Find matching tool call in this specific AI message
+    const matchingToolCall = aiMessage.tool_calls.find(
+      (tc: any) => toolNames.includes(tc.name)
+    );
+    
+    return matchingToolCall?.id;
+  };
+  
+  const toolCallId = getToolCallIdFromMessage();
+  
   if (!result) return null;
 
   // Handle error
@@ -162,7 +213,7 @@ export default function StakingOperationResult({
 
   // Fallback: Display raw JSON
   return (
-    <div className="rounded-lg border p-6 shadow-sm">
+    <div className="max-w-sm rounded-lg border p-6 shadow-sm">
       <div className="mb-4 flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
           <Coins className="h-5 w-5 text-muted-foreground" />

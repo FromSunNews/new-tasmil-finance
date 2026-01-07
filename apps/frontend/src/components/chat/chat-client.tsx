@@ -87,8 +87,21 @@ export function ChatClient({ agentId, chatId }: ChatClientProps) {
   const chatTitle = chatId === "new" ? "New Chat" : `Chat with ${config.name}`;
   const isNewChat = messages.length === 0 && !isLoading;
   
-  // Show suggestions when: new chat OR agent finished responding (not loading and has messages)
-  const showSuggestions = isNewChat || (!isLoading && messages.length > 0);
+  // Check if the last AI message is complete (has content and no pending tool calls)
+  const lastAiMessage = messages.filter(m => m.type === "ai").pop();
+  const hasToolCalls = lastAiMessage && "tool_calls" in lastAiMessage && 
+    Array.isArray(lastAiMessage.tool_calls) && lastAiMessage.tool_calls.length > 0;
+  const isAiResponseComplete = lastAiMessage && 
+    !hasToolCalls &&
+    (typeof lastAiMessage.content === "string" ? lastAiMessage.content.length > 0 : true);
+  
+  // Effective loading state - consider AI response complete as "not loading" for UI purposes
+  // This helps avoid the 3-5s delay where stream.isLoading is still true after AI finishes
+  const effectiveIsLoading = isLoading && !(isAiResponseComplete && firstTokenReceived);
+  
+  // Show suggestions when: new chat OR agent finished responding
+  // Use isAiResponseComplete as a faster indicator that AI is done
+  const showSuggestions = isNewChat || (!effectiveIsLoading && messages.length > 0);
 
   // Error handling
   const lastError = useRef<string | undefined>(undefined);
@@ -286,7 +299,7 @@ export function ChatClient({ agentId, chatId }: ChatClientProps) {
               />
             )}
 
-            {isLoading && !firstTokenReceived && <AssistantMessageLoading />}
+            {effectiveIsLoading && !firstTokenReceived && <AssistantMessageLoading />}
           </div>
 
           <div ref={messagesEndRef} />
@@ -397,7 +410,7 @@ export function ChatClient({ agentId, chatId }: ChatClientProps) {
                 </div>
 
                 {/* Send/Stop button */}
-                {stream.isLoading ? (
+                {effectiveIsLoading ? (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
@@ -414,7 +427,7 @@ export function ChatClient({ agentId, chatId }: ChatClientProps) {
                 ) : (
                   <Button
                     type="submit"
-                    disabled={isLoading || (!input.trim() && contentBlocks.length === 0)}
+                    disabled={effectiveIsLoading || (!input.trim() && contentBlocks.length === 0)}
                     className="h-8 w-8 rounded-full p-0 bg-primary text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground"
                   >
                     <Send className="h-4 w-4" />
