@@ -51,7 +51,7 @@ tavily-python = "^0.7.12"
 protobuf = ">=6.31.1"
 langchain = "1.0.3"
 wcmatch = "^10.1"
-ringkasai = { git = "ssh://git@git.barebone.ringkas.co.id/ringkas/polaris/alcor.git", branch = "develop" }
+# ringkasai = { git = "ssh://git@git.barebone.ringkas.co.id/ringkas/polaris/alcor.git", branch = "develop" }
 
 [tool.ruff]
 # Exclude a variety of commonly ignored directories.
