@@ -22,4 +22,5 @@ CREATE TABLE IF NOT EXISTS assistant_versions (
 );
 
 CREATE INDEX CONCURRENTLY IF NOT EXISTS assistant_graph_id_idx ON assistant USING btree (graph_id, created_at DESC);
-CREATE INDEX CONCURRENTLY IF NOT EXISTS assistant_metadata_idx ON assistant USING gin (metadata jsonb_path_ops);
+-- Changed from GIN to btree for Azure PostgreSQL compatibility
+CREATE INDEX CONCURRENTLY IF NOT EXISTS assistant_metadata_idx ON assistant USING btree ((metadata->>'key'));

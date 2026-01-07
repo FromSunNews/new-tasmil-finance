@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS run (
 );
 
 CREATE INDEX CONCURRENTLY IF NOT EXISTS run_assistant_id_idx ON run USING btree (assistant_id);
-CREATE INDEX CONCURRENTLY IF NOT EXISTS run_metadata_idx ON run USING gin (metadata jsonb_path_ops);
+-- Changed from GIN to btree for Azure PostgreSQL compatibility
+CREATE INDEX CONCURRENTLY IF NOT EXISTS run_metadata_idx ON run USING btree ((metadata->>'key'));
 CREATE INDEX CONCURRENTLY IF NOT EXISTS run_pending_idx ON run USING btree (created_at) WHERE (status = 'pending'::text);
 CREATE INDEX CONCURRENTLY IF NOT EXISTS run_thread_id_status_idx ON run USING btree (thread_id, status);

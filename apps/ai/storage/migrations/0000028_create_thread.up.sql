@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS thread (
 	CONSTRAINT thread_pkey PRIMARY KEY (thread_id)
 );
 
-CREATE INDEX CONCURRENTLY IF NOT EXISTS thread_metadata_idx ON thread USING gin (metadata jsonb_path_ops);
+-- Changed from GIN to btree for Azure PostgreSQL compatibility
+CREATE INDEX CONCURRENTLY IF NOT EXISTS thread_metadata_idx ON thread USING btree ((metadata->>'key'));
 CREATE INDEX CONCURRENTLY IF NOT EXISTS thread_status_idx ON thread USING btree (status, created_at DESC);
-CREATE INDEX CONCURRENTLY IF NOT EXISTS thread_values_idx ON thread USING gin ("values" jsonb_path_ops);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS thread_values_idx ON thread USING btree (("values"->>'key'));
