@@ -36,8 +36,8 @@ function getThreadSearchMetadata(
 
 export function ThreadProvider({ children }: { children: ReactNode }) {
   // Get from env instead of URL params
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
-  const assistantId = process.env.NEXT_PUBLIC_ASSISTANT_ID || "";
+  const apiUrl = process.env['NEXT_PUBLIC_API_URL'] || "";
+  const assistantId = process.env['NEXT_PUBLIC_ASSISTANT_ID'] || "";
   
   const [threads, setThreads] = useState<Thread[]>([]);
   const [threadsLoading, setThreadsLoading] = useState(false);

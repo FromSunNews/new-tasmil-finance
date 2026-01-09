@@ -2,7 +2,7 @@
 
 import { Plus, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Typography } from "@/components/ui/typography";
+import { Typography } from "@/shared/ui/typography";
 
 type FAQItem = {
   id: string;

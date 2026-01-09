@@ -1,7 +1,7 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 
 export const getApiBaseUrl = () => {
-  let url = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
+  let url = process.env['NEXT_PUBLIC_API_URL'] || "http://localhost:8001";
   return url.replace(/\/$/, ''); // Remove trailing slash
 };
 

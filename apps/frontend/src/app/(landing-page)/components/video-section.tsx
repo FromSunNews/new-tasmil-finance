@@ -1,7 +1,7 @@
 "use client";
 
-import { HeroVideoDialog } from "@/components/ui/hero-video-dialog";
-import { Typography } from "@/components/ui/typography";
+import { HeroVideoDialog } from "@/shared/ui/hero-video-dialog";
+import { Typography } from "@/shared/ui/typography";
 
 export const VideoSection = () => {
   return (

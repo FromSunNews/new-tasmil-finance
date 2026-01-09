@@ -5,9 +5,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Typography } from "@/components/ui/typography";
-import { PATHS } from "@/constants/routes";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/ui/tooltip";
+import { Typography } from "@/shared/ui/typography";
+import { PATHS } from "@/shared/constants/routes";
 
 const FOOTER_IMAGES = {
   background: "/images/landing-v3/footer-bg.png",

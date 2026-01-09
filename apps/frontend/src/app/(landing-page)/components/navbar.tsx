@@ -5,10 +5,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui/button-v2";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Typography } from "@/components/ui/typography";
-import { PATHS, SECTION_IDS } from "@/constants/routes";
+import { Button } from "@/shared/ui/button-v2";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/ui/tooltip";
+import { Typography } from "@/shared/ui/typography";
+import { PATHS, SECTION_IDS } from "@/shared/constants/routes";
 import { cn } from "@/lib/utils";
 
 const TRANSITION_STYLES = {
@@ -39,7 +39,7 @@ type MainNavbarProps = {
   isMobileMenuOpen: boolean;
   toggleMobileMenu: () => void;
   isAnnouncementVisible: boolean;
-  onSectionClick?: (sectionId: SectionId) => void;
+  onSectionClick?: ((sectionId: SectionId) => void) | undefined;
   isScrolled: boolean;
 };
 
@@ -47,7 +47,13 @@ interface NavbarProps {
   onSectionClick?: (sectionId: SectionId) => void;
 }
 
-const MainNavbar = ({ isMobileMenuOpen, toggleMobileMenu, isScrolled }: MainNavbarProps) => {
+const MainNavbar = ({ 
+  isMobileMenuOpen, 
+  toggleMobileMenu, 
+  isScrolled, 
+  isAnnouncementVisible: _isAnnouncementVisible, 
+  onSectionClick: _onSectionClick 
+}: MainNavbarProps) => {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabName>("DEMO");
   const [indicatorStyle, setIndicatorStyle] = useState<IndicatorStyle>({
@@ -479,7 +485,7 @@ export const Navbar = ({ onSectionClick }: NavbarProps) => {
           isAnnouncementVisible={isAnnouncementVisible}
           isMobileMenuOpen={isMobileMenuOpen}
           isScrolled={isScrolled}
-          onSectionClick={onSectionClick}
+          onSectionClick={onSectionClick || undefined}
           toggleMobileMenu={toggleMobileMenu}
         />
       </div>

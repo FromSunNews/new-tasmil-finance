@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { SECTION_IDS } from "@/constants/routes";
+import { SECTION_IDS } from "@/shared/constants/routes";
 import { AbstractSection } from "./abstract-section";
 import { BenefitSection } from "./benefit-section";
 import { FAQSection } from "./faq-section";

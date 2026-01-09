@@ -2,9 +2,9 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { HeroSection } from "@/components/agents/hero-section";
-import { FilterBar } from "@/components/agents/filter-bar";
-import { AgentCard } from "@/components/agents/agent-card";
+import { HeroSection } from "@/features/agents/components/hero-section";
+import { FilterBar } from "@/features/agents/components/filter-bar";
+import { AgentCard } from "@/features/agents/components/agent-card";
 import { useSearchAssistantsAssistantsSearchPost, useCreateThreadThreadsPost } from "@/gen";
 import { $ } from "@/lib/kubb";
 import type { Assistant } from "@/gen/types/assistant";
@@ -31,10 +31,10 @@ export default function AgentsPage() {
   const [searchQuery, setSearchQuery] = useState("");
 
   // Call hook để lấy agents với body rỗng
-  const searchAssistants = useSearchAssistantsAssistantsSearchPost($);
+  const searchAssistants = useSearchAssistantsAssistantsSearchPost($ as any);
   
   // Hook để tạo thread mới
-  const createThread = useCreateThreadThreadsPost($);
+  const createThread = useCreateThreadThreadsPost($ as any);
 
   // Load agents khi component mount
   useEffect(() => {

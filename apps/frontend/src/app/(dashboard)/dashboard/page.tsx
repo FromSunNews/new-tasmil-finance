@@ -1,13 +1,13 @@
 "use client";
 
-import { useWallet } from "@/context/wallet-context";
-import { useMultiSidebar } from "@/components/ui/multi-sidebar";
-import { Button } from "@/components/ui/button-v2";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useWallet } from "@/shared/context/wallet-context";
+import { useMultiSidebar } from "@/shared/ui/multi-sidebar";
+import { Button } from "@/shared/ui/button-v2";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Wallet, TrendingUp, DollarSign, Activity } from "lucide-react";
 
 export default function DashboardPage() {
-  const { isConnected, isAuthenticated, displayAddress, user, connect, isAuthenticating } =
+  const { isConnected, displayAddress, user, connect, isAuthenticating } =
     useWallet();
 
   const { leftSidebarOpen, rightSidebarOpen, isMobile } = useMultiSidebar();

@@ -1,6 +1,6 @@
 "use client";
 
-import { MultiSidebarLayout } from "@/components/layout/multi-sidebar-layout";
+import { MultiSidebarLayout } from "@/shared/layout/multi-sidebar-layout";
 
 export default function ChatLayout({ children }: { children: React.ReactNode }) {
   return (

@@ -7,9 +7,9 @@ import type { PropsWithChildren } from "react";
 import { useState } from "react";
 import { Toaster } from "sonner";
 import { WagmiProvider } from "wagmi";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { wagmiConfig, defaultNetwork } from "@/config/wagmi";
-import { WalletProvider } from "@/context/wallet-context";
+import { TooltipProvider } from "@/shared/ui/tooltip";
+import { wagmiConfig, defaultNetwork } from "@/shared/config/wagmi";
+import { WalletProvider } from "@/shared/context/wallet-context";
 import "@rainbow-me/rainbowkit/styles.css";
 
 // Custom DeFi dark theme matching globals.css dark mode colors
@@ -118,7 +118,7 @@ export function AppProvider({ children }: PropsWithChildren) {
           <RainbowKitProvider
             appInfo={{
               appName: "Tasmil Finance",
-              learnMoreUrl: process.env.NEXT_PUBLIC_URL || "",
+              learnMoreUrl: process.env['NEXT_PUBLIC_URL'] || "",
             }}
             initialChain={defaultNetwork}
             modalSize="wide"

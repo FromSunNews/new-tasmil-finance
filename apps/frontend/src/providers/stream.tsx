@@ -16,12 +16,12 @@ import {
   type UIMessage,
   type RemoveUIMessage,
 } from "@langchain/langgraph-sdk/react-ui";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { LangGraphLogoSVG } from "@/components/icons/langgraph";
-import { Label } from "@/components/ui/label";
+import { Input } from "@/shared/ui/input";
+import { Button } from "@/shared/ui/button";
+import { LangGraphLogoSVG } from "@/shared/icons/langgraph";
+import { Label } from "@/shared/ui/label";
 import { ArrowRight } from "lucide-react";
-import { PasswordInput } from "@/components/ui/password-input";
+import { PasswordInput } from "@/shared/ui/password-input";
 import { getApiKey } from "@/lib/api-key";
 import { useThreads } from "./thread";
 import { toast } from "sonner";
@@ -132,8 +132,8 @@ export const StreamProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
   // Get environment variables
-  const envApiUrl: string | undefined = process.env.NEXT_PUBLIC_API_URL;
-  const envAssistantId: string | undefined = process.env.NEXT_PUBLIC_ASSISTANT_ID;
+  const envApiUrl: string | undefined = process.env['NEXT_PUBLIC_API_URL'];
+  const envAssistantId: string | undefined = process.env['NEXT_PUBLIC_ASSISTANT_ID'];
 
   // Use state instead of URL params
   const [apiUrl, setApiUrl] = useState(envApiUrl || "");

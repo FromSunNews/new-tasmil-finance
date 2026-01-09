@@ -1,8 +1,8 @@
 "use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Typography } from "@/components/ui/typography";
-import { Button } from "@/components/ui/button-v2";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/ui/card";
+import { Typography } from "@/shared/ui/typography";
+import { Button } from "@/shared/ui/button-v2";
 import {
   TrendingUp,
   TrendingDown,

@@ -47,7 +47,12 @@ export async function fileToBase64(file: File): Promise<string> {
     reader.onloadend = () => {
       const result = reader.result as string;
       // Remove the data:...;base64, prefix
-      resolve(result.split(",")[1]);
+      const base64Data = result?.split(",")[1];
+      if (base64Data) {
+        resolve(base64Data);
+      } else {
+        reject(new Error("Failed to convert file to base64"));
+      }
     };
     reader.onerror = reject;
     reader.readAsDataURL(file);

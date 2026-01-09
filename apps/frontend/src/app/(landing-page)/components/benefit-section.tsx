@@ -3,7 +3,7 @@
 import { Globe, MessageCircle, Wrench } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import { Typography } from "@/components/ui/typography";
+import { Typography } from "@/shared/ui/typography";
 import { cn } from "@/lib/utils";
 
 const BENEFIT_IMAGES = {
@@ -43,6 +43,7 @@ export const BenefitSection = () => {
             clearTimeout(timer3);
           };
         }
+        return undefined;
       },
       {
         root: null,

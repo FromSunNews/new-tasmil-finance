@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { VelocityScroll } from "@/components/ui/scroll-based-velocity";
+import { VelocityScroll } from "@/shared/ui/scroll-based-velocity";
 
 const ABSTRACT_IMAGES = {
   mainObject: "/images/landing-v3/abstract/main-object.png",
