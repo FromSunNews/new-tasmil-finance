@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { HeroSection } from "@/features/agents/components/hero-section";
 import { FilterBar } from "@/features/agents/components/filter-bar";
 import { AgentCard } from "@/features/agents/components/agent-card";
-import { useSearchAssistantsAssistantsSearchPost, useCreateThreadThreadsPost } from "@/gen";
+import { useSearchAssistantsAssistantsSearchPost } from "@/gen";
 import { $ } from "@/lib/kubb";
 import type { Assistant } from "@/gen/types/assistant";
 
@@ -32,9 +32,6 @@ export default function AgentsPage() {
 
   // Call hook để lấy agents với body rỗng
   const searchAssistants = useSearchAssistantsAssistantsSearchPost($ as any);
-  
-  // Hook để tạo thread mới
-  const createThread = useCreateThreadThreadsPost($ as any);
 
   // Load agents khi component mount
   useEffect(() => {
@@ -77,25 +74,9 @@ export default function AgentsPage() {
     });
   }, [searchAssistants.data, activeFilter, searchQuery]);
 
-  const handleAgentClick = async (assistant: Assistant) => {
-    try {
-      // Tạo thread mới với metadata chứa graph_id và assistant_id
-      const threadResponse = await createThread.mutateAsync({
-        data: {
-          metadata: {
-            graph_id: assistant.graph_id,
-            assistant_id: assistant.assistant_id,
-          },
-        },
-      });
-
-      // Navigate trực tiếp đến thread vừa tạo
-      router.push(`/chat/${assistant.name}/${threadResponse.thread_id}`);
-    } catch (error) {
-      console.error('Failed to create thread:', error);
-      // Fallback to old behavior if thread creation fails
-      router.push(`/chat/${assistant.name}/new`);
-    }
+  const handleAgentClick = (assistant: Assistant) => {
+    // Navigate đến /new, thread sẽ được tạo khi gửi message đầu tiên
+    router.push(`/chat/${assistant.graph_id}/new`);
   };
 
   return (
@@ -126,7 +107,7 @@ export default function AgentsPage() {
 
           {!searchAssistants.isPending && !searchAssistants.error && (
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {filteredAgents.map((assistant) => (
+              {filteredAgents.map((assistant: any) => (
                 <AgentCard 
                   key={assistant.assistant_id} 
                   assistant={assistant} 
@@ -139,14 +120,6 @@ export default function AgentsPage() {
           {!searchAssistants.isPending && filteredAgents.length === 0 && (
             <div className="py-16 text-center">
               <p className="text-muted-foreground">No agents found matching your criteria.</p>
-            </div>
-          )}
-
-          {createThread.isPending && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-              <div className="bg-background p-6 rounded-lg">
-                <p className="text-foreground">Creating new chat...</p>
-              </div>
             </div>
           )}
         </section>

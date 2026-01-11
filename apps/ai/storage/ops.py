@@ -1341,33 +1341,32 @@ class Runs(Authenticated):
             await asyncio.sleep(0)
 
         # get the run
-        async with (
-            connect() as conn,
-            await conn.execute(
-                """
-                with selected as (
-                    select *
-                    from run
-                    where run.status = 'pending'
-                        and run.created_at < now()
-                        and not exists (
-                            select 1 from run r2
-                            where r2.thread_id = run.thread_id
-                                and r2.status = 'running'
-                        )
-                    order by run.created_at
-                    limit %s
-                )
-                update run set status = 'running'
-                from selected
-                where run.run_id = selected.run_id
-                returning run.*;
-                """,
-                (limit,),
-                binary=True,
-            ) as cur,
-        ):
-            run = await cur.fetchone()
+        async with connect() as conn:
+            async with conn.transaction():
+                async with await conn.execute(
+                    """
+                    with selected as (
+                        select *
+                        from run
+                        where run.status = 'pending'
+                            and run.created_at < now()
+                            and not exists (
+                                select 1 from run r2
+                                where r2.thread_id = run.thread_id
+                                    and r2.status = 'running'
+                            )
+                        order by run.created_at
+                        limit %s
+                    )
+                    update run set status = 'running'
+                    from selected
+                    where run.run_id = selected.run_id
+                    returning run.*;
+                    """,
+                    (limit,),
+                    binary=True,
+                ) as cur:
+                    run = await cur.fetchone()
             if run is not None:
                 async with await get_redis().pipeline() as pipe:
                     await pipe.set(
@@ -1402,39 +1401,19 @@ class Runs(Authenticated):
         """Enter a run, listen for cancellation while running, signal when done."
         This method should be called as a context manager by a worker executing a run.
         """
-        from api.asyncio import ValueEvent
-        from api.utils.stream_codec import STREAM_CODEC
-        from storage.inmem_stream import Message, get_stream_manager
-
-        stream_manager = get_stream_manager()
-        # Get control queue for this run (normal queue is created during run creation)
-        control_queue = await stream_manager.add_control_queue(run_id, thread_id)
-
-        async with SimpleTaskGroup(cancel=True, taskgroup_name="Runs.enter") as tg:
+        async with get_pubsub() as pubsub, SimpleTaskGroup(cancel=True) as tg:
             done = ValueEvent()
-            tg.create_task(
-                listen_for_cancellation(control_queue, run_id, thread_id, done)
-            )
-
-            # Give done event to caller
-            yield done
-            # Store the control message for late subscribers
-            control_message = Message(
-                topic=f"run:{run_id}:control".encode(), data=b"done"
-            )
-            await stream_manager.put(run_id, thread_id, control_message)
-
-            # Signal done to all subscribers using stream codec
-            stream_message = Message(
-                topic=f"run:{run_id}:stream".encode(),
-                data=STREAM_CODEC.encode("control", b"done"),
-            )
-            await stream_manager.put(
-                run_id, thread_id, stream_message, resumable=resumable
-            )
-
-            # Remove the control_queue (normal queue is cleaned up during run deletion)
-            await stream_manager.remove_control_queue(run_id, thread_id, control_queue)
+            # start listener, will be cancelled when exiting context
+            tg.create_task(listen_for_cancellation(pubsub=pubsub, run_id=run_id, thread_id=thread_id, done=done))
+            # start heartbeat, will be cancelled when exiting context
+            hb = loop.create_task(heartbeat(run_id))
+            # give done event to caller
+            try:
+                yield done
+                # signal done
+                await get_redis().publish(CHANNEL_RUN_CONTROL.format(run_id), "done")
+            finally:
+                hb.cancel()
 
     @staticmethod
     async def sweep(conn: AsyncConnection[DictRow]) -> list[UUID]:
@@ -1967,26 +1946,7 @@ SELECT * FROM inflight_runs"""
             """Subscribe to the run stream, returning a stream handler.
             The stream handler must be passed to `join` to receive messages."""
             # Validate access to the thread before subscribing
-            filters = await Runs.Stream.handle_event(
-                ctx,
-                "read",
-                Auth.types.ThreadsRead(run_id=run_id, thread_id=thread_id),
-            )
-            filter_clause, filter_params = _build_filter_query(
-                filters=filters, table_alias="thread"
-            )
-            if filter_params:
-                query = f"""
-                SELECT run_id FROM run
-                JOIN thread USING (thread_id)
-                WHERE run_id = %(run_id)s AND thread_id = %(thread_id)s
-                {filter_clause}
-                """
-                params = {**filter_params, "run_id": run_id, "thread_id": thread_id}
-                async with connect() as conn:
-                    cur = await conn.execute(query, params, binary=True)
-                    if not await cur.fetchone():
-                        raise HTTPException(status_code=404, detail="Thread not found")
+            await Runs.Stream.check_run_stream_auth(run_id, thread_id, ctx=ctx)
             
             pubsub = get_pubsub()
             control_channel = CHANNEL_RUN_CONTROL.format(run_id)
@@ -2036,54 +1996,45 @@ SELECT * FROM inflight_runs"""
             thread_id: UUID,
             ignore_404: bool = False,
             stream_channel: StreamHandler | None = None,
-            last_event_id: str | None = None,
             cancel_on_disconnect: bool = False,
-            stream_mode: StreamMode | StreamHandler | None = None,
+            stream_mode: StreamMode | None = None,
             ctx: Auth.types.BaseAuthContext | None = None,
         ) -> AsyncIterator[tuple[bytes, bytes, bytes | None]]:
-            """Stream the run output, either from a stream handler or a stream mode."""
-            filters = await Runs.Stream.handle_event(
-                ctx,
-                "read",
-                Auth.types.ThreadsRead(run_id=run_id, thread_id=thread_id),
-            )
-            filter_clause, filter_params = _build_filter_query(
-                filters=filters, table_alias="thread"
-            )
-            if filter_params:
-                query = f"""
-                SELECT run_id FROM run
-                JOIN thread USING (thread_id)
-                WHERE run_id = %(run_id)s AND thread_id = %(thread_id)s
-                {filter_clause}
-                """
-                params = {**filter_params, "run_id": run_id, "thread_id": thread_id}
-                async with connect() as conn:
-                    cur = await conn.execute(query, params, binary=True)
-                    if not await cur.fetchone():
-                        raise HTTPException(status_code=404, detail="Thread not found")
+            """Stream the run output, either from a stream handler or a stream mode.
+            
+            Args:
+                run_id: The run ID to stream.
+                thread_id: The thread ID the run belongs to.
+                ignore_404: If True, don't yield error when run is not found.
+                stream_channel: Pre-subscribed pubsub handler. If provided, reuses it
+                    instead of creating a new subscription.
+                cancel_on_disconnect: If True, cancel the run when client disconnects.
+                stream_mode: The stream mode to subscribe to (e.g., "values", "updates").
+                    If None, subscribes to all modes using pattern matching.
+                ctx: Authentication context.
+            """
+            await Runs.Stream.check_run_stream_auth(run_id, thread_id, ctx=ctx)
 
             log = logging
             pubsub: StreamHandler | None = None
             try:
-                pubsub = (
-                    stream_mode
-                    if isinstance(stream_mode, coredis.commands.pubsub.BasePubSub)
-                    else get_pubsub()
-                )
+                # Use pre-subscribed channel if provided, otherwise create new pubsub
+                pubsub = stream_channel if stream_channel is not None else get_pubsub()
+                
                 async with pubsub, connect() as conn:
                     control_channel = CHANNEL_RUN_CONTROL.format(run_id)
-                    if stream_mode is pubsub:
-                        pass
-                    elif stream_mode is None:
-                        await pubsub.psubscribe(
-                            CHANNEL_RUN_STREAM.format(run_id, "*"), control_channel
-                        )
-                    else:
-                        await pubsub.subscribe(
-                            CHANNEL_RUN_STREAM.format(run_id, stream_mode),
-                            control_channel,
-                        )
+                    
+                    # Only subscribe if we created a new pubsub (no pre-subscribed channel)
+                    if stream_channel is None:
+                        if stream_mode is None:
+                            await pubsub.psubscribe(
+                                CHANNEL_RUN_STREAM.format(run_id, "*"), control_channel
+                            )
+                        else:
+                            await pubsub.subscribe(
+                                CHANNEL_RUN_STREAM.format(run_id, stream_mode),
+                                control_channel,
+                            )
                     logger.info(
                         "Joined run stream",
                         run_id=str(run_id),
@@ -2445,35 +2396,31 @@ async def cancel_run(
 
 
 async def listen_for_cancellation(
-    queue: asyncio.Queue, run_id: UUID, thread_id: UUID | None, done: ValueEvent
+    pubsub: StreamHandler, run_id: UUID, thread_id: UUID | None, done: ValueEvent
 ):
     """Listen for cancellation messages and set the done event accordingly."""
-    from api.errors import UserInterrupt, UserRollback
-    from storage.inmem_stream import get_stream_manager
-    stream_manager = get_stream_manager()
-
-    if control_key := stream_manager.get_control_key(run_id, thread_id):
-        payload = control_key.data
-        if payload == b"rollback":
-            done.set(UserRollback())
-        elif payload == b"interrupt":
-            done.set(UserInterrupt())
-
-    while not done.is_set():
-        try:
-            # This task gets cancelled when Runs.enter exits anyway,
-            # so we can have a pretty lengthy timeout here
-            message = await asyncio.wait_for(queue.get(), timeout=240)
-            payload = message.data
-            if payload == b"rollback":
+    try:
+        await pubsub.subscribe(CHANNEL_RUN_CONTROL.format(run_id))
+        if start_value := await get_redis().get(STRING_RUN_CONTROL.format(run_id)):
+            if start_value == b"rollback":
                 done.set(UserRollback())
-            elif payload == b"interrupt":
+            elif start_value == b"interrupt":
                 done.set(UserInterrupt())
-            elif payload == b"done":
-                done.set()
+        while True:
+            event = await pubsub.listen()
+            if event is None:
                 break
-        except TimeoutError:
-            break
+            if event["type"] != "message":
+                continue
+            payload = event["data"].decode()
+            if payload == "rollback":
+                done.set(UserRollback())
+            elif payload == "interrupt":
+                done.set(UserInterrupt())
+    except Exception as exc:
+        logger.exception("listen_for_cancellation failed", exc_info=exc)
+        done.set(RetryableException("listen_for_cancellation failed"))
+        raise
 
 
 async def heartbeat(run_id: UUID):
@@ -2498,7 +2445,7 @@ USE_NEW_INTERRUPTS = LANGGRAPH_PY_MINOR >= (0, 6)
 
 def _patch_interrupt(
     interrupt: Interrupt | dict,
-) -> InterruptSchema | DeprecatedInterrupt:
+) -> InterruptSchema:
     """Convert a langgraph interrupt (v0 or v1) to standard interrupt schema.
 
     In v0.4 and v0.5, interrupt_id is a property on the langgraph.types.Interrupt object,
@@ -2525,9 +2472,6 @@ def _patch_interrupt(
                 interrupt.interrupt_id if hasattr(interrupt, "interrupt_id") else None
             ),
             "value": interrupt.value,
-            "resumable": interrupt.resumable,
-            "ns": interrupt.ns,
-            "when": interrupt.when,  # type: ignore[unresolved-attribute]
         }
 
 

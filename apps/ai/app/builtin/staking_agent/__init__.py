@@ -1,19 +1,17 @@
 """Staking Agent - Blockchain staking operations using MCP."""
 
 from .graph import (
-    State,
+    AgentState,
     build_graph,
-    create_simple_staking_agent,
-    create_staking_agent,
     get_graph,
     get_mcp_client_config,
+    graph,
 )
 
 __all__ = [
-    "State",
+    "AgentState",
     "build_graph",
-    "create_staking_agent",
-    "create_simple_staking_agent",
     "get_graph",
     "get_mcp_client_config",
+    "graph",
 ]

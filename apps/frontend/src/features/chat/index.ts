@@ -2,9 +2,10 @@
 export * from './types';
 export * from './constants';
 
-// Components
-export { ChatClient } from './components/chat-client';
-export { ChatPageWrapper } from './components/chat-page-wrapper';
+// Components - CopilotKit implementation
+export { CopilotChatClient } from './components/copilot-chat-client';
+export { CopilotChatWrapper } from './components/copilot-chat-wrapper';
+export { CopilotSuggestions } from './components/copilot-suggestions';
 export { Greeting } from './components/greeting';
 export { SuggestedActions } from './components/suggested-actions';
 export { Suggestion } from './components/suggestion';
@@ -17,10 +18,9 @@ export { MarkdownText } from './thread/components/markdown-text';
 export { MultimodalPreview } from './thread/components/multimodal-preview';
 export { SyntaxHighlighter } from './thread/components/syntax-highlighter';
 export { TooltipIconButton } from './thread/components/tooltip-icon-button';
-export * from './thread/utils';
 
-// Hooks will be exported here once they are created
-// export * from './hooks';
+// Hooks
+export { useDefiActions } from './hooks/use-defi-actions';
 
 // API functions will be exported here once they are created
 // export * from './api';

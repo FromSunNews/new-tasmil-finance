@@ -32,8 +32,9 @@ _thread_local = threading.local()
 
 async def healthcheck() -> None:
     # check postgres
-    async with connect() as conn, conn.cursor() as cur:
-        await cur.execute("SELECT 1")
+    async with connect() as conn:
+        async with conn.transaction():
+            await conn.execute("SELECT 1")
     # check redis
     await get_redis().ping()
 
@@ -97,7 +98,7 @@ def create_pool(
         timeout=15,
         kwargs={
             **params,
-            "autocommit": True,
+            "autocommit": False,
             "prepare_threshold": 0,
             "row_factory": dict_row,
         },
@@ -116,7 +117,7 @@ async def create_conn(__test__: bool = False) -> AsyncConnection[DictRow]:
         config.DATABASE_URI,
         options=params["options"],
         row_factory=dict_row,
-        autocommit=True,
+        autocommit=False,
         prepare_threshold=0,
     )
     await _configure_connection(conn)
@@ -124,27 +125,29 @@ async def create_conn(__test__: bool = False) -> AsyncConnection[DictRow]:
 
 
 async def migrate() -> None:
-    async with connect() as conn, conn.cursor() as cur:
-        try:
-            results = await cur.execute(
-                "select version from schema_migrations order by version desc limit 1",
-                prepare=False,
-            )
-            if row := await results.fetchone():
-                current_version = row["version"]
-            else:
-                current_version = -1
-        except UndefinedTable:
-            await cur.execute(
-                """
-                CREATE TABLE schema_migrations (
-                    version bigint primary key,
-                    dirty boolean not null
+    async with connect() as conn:
+        async with conn.transaction():
+            try:
+                results = await conn.execute(
+                    "select version from schema_migrations order by version desc limit 1",
+                    prepare=False,
                 )
-                """,
-                prepare=False,
-            )
-            current_version = -1
+                if row := await results.fetchone():
+                    current_version = row["version"]
+                else:
+                    current_version = -1
+            except UndefinedTable:
+                await conn.execute(
+                    """
+                    CREATE TABLE schema_migrations (
+                        version bigint primary key,
+                        dirty boolean not null
+                    )
+                    """,
+                    prepare=False,
+                )
+                current_version = -1
+        
         for migration_path in sorted(os.listdir(config.MIGRATIONS_PATH)):
             version = int(migration_path.split("_")[0])
             if version <= current_version:
@@ -154,14 +157,30 @@ async def migrate() -> None:
             # Split by create index concurrently statements to ensure they are executed in separate transactions
             statements = re.split(r"(?i)create\s+index\s+concurrently", sql)
             print(statements)
+            
+            # Process statements
             for i, stmt in enumerate(statements):
                 if i > 0:
                     stmt = "CREATE INDEX CONCURRENTLY" + stmt
-                await cur.execute(stmt.strip(), prepare=False)
-            await cur.execute(
-                "INSERT INTO schema_migrations (version, dirty) VALUES (%s, %s)",
-                (version, False),
-            )
+                
+                stmt = stmt.strip()
+                if not stmt:
+                    continue
+                
+                # CREATE INDEX CONCURRENTLY must run outside a transaction
+                if stmt.upper().startswith("CREATE INDEX CONCURRENTLY"):
+                    await conn.execute(stmt, prepare=False)
+                else:
+                    # Regular statements run in a transaction
+                    async with conn.transaction():
+                        await conn.execute(stmt, prepare=False)
+            
+            # Record migration completion
+            async with conn.transaction():
+                await conn.execute(
+                    "INSERT INTO schema_migrations (version, dirty) VALUES (%s, %s)",
+                    (version, False),
+                )
             logger.info("Applied database migration", version=version)
 
 

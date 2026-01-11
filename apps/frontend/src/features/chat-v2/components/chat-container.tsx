@@ -1,0 +1,224 @@
+"use client";
+
+// 🎨 Chat container - main chat layout
+
+import { useState, useRef, useEffect, FormEvent, useCallback } from 'react';
+import { cn } from '@/lib/utils';
+import { useFileUpload } from '@/shared/hooks/use-file-upload';
+import { useIsMobile } from '@/shared/hooks/use-mobile';
+
+import { useChatSession } from '@/features/chat-v2/hooks';
+import { useDefiActions } from '@/features/chat-v2/actions';
+import { ChatHeader } from '@/features/chat-v2/components/chat-header';
+import { ChatMessages } from '@/features/chat-v2/components/chat-messages';
+import { ChatInput } from '@/features/chat-v2/components/chat-input';
+import { Greeting } from '@/features/chat-v2/components/greeting';
+import { Suggestions } from '@/features/chat-v2/components/suggestions';
+import { ScrollToBottom } from '@/features/chat-v2/components/scroll-to-bottom';
+import { HistorySkeleton } from '@/features/chat-v2/components/messages';
+
+interface ChatContainerProps {
+  agentId: string;
+  chatId: string;
+  onNewThread?: (threadId: string) => void;
+  className?: string;
+}
+
+export function ChatContainer({ 
+  agentId, 
+  chatId, 
+  onNewThread,
+  className 
+}: ChatContainerProps) {
+  const isMobile = useIsMobile();
+  const [input, setInput] = useState('');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const [userScrolledUp, setUserScrolledUp] = useState(false);
+  const lastMessageCountRef = useRef(0);
+
+  // Initialize DeFi actions
+  useDefiActions();
+
+  // File upload hook
+  const {
+    contentBlocks,
+    setContentBlocks,
+    handleFileUpload,
+    dropRef,
+    removeBlock,
+    dragOver,
+    handlePaste,
+  } = useFileUpload();
+
+  // Chat session hook
+  const {
+    messages,
+    isLoading,
+    isLoadingHistory,
+    sendMessage,
+    regenerate,
+    editMessage,
+    stopGeneration,
+  } = useChatSession({ agentId, chatId, onNewThread });
+
+  // Determine UI states
+  const isNewChat = chatId === 'new';
+  const showGreeting = isNewChat && messages.length === 0 && !isLoading;
+  const showSuggestions = (isNewChat && messages.length === 0) || (!isLoading && messages.length > 0);
+  
+  // Only show AI loading when actually sending a message, not when loading history
+  const showAiLoading = isLoading && !isLoadingHistory;
+
+  // Auto-scroll to bottom only when new messages arrive and user hasn't scrolled up
+  useEffect(() => {
+    if (messages.length > lastMessageCountRef.current && !userScrolledUp) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+    lastMessageCountRef.current = messages.length;
+  }, [messages.length, userScrolledUp]);
+
+  // Track scroll position for scroll-to-bottom button
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+      setShowScrollButton(!isNearBottom);
+      
+      if (!isNearBottom) {
+        setUserScrolledUp(true);
+      }
+    };
+
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
+    setUserScrolledUp(false);
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, []);
+
+  const handleSubmit = useCallback((e: FormEvent) => {
+    e.preventDefault();
+    if ((input.trim().length === 0 && contentBlocks.length === 0) || isLoading) return;
+
+    let messageContent = input.trim();
+    
+    if (contentBlocks.length > 0) {
+      const fileDescriptions = contentBlocks.map(block => {
+        if (block.type === 'image_url') {
+          return `[Image: ${(block as any).image_url?.url || 'uploaded image'}]`;
+        }
+        return `[File: ${block.type}]`;
+      }).join('\n');
+      
+      messageContent = messageContent ? `${messageContent}\n\n${fileDescriptions}` : fileDescriptions;
+    }
+
+    sendMessage(messageContent);
+    setInput('');
+    setContentBlocks([]);
+    setUserScrolledUp(false);
+  }, [input, contentBlocks, isLoading, sendMessage, setContentBlocks]);
+
+  const handleRegenerate = useCallback((messageIndex: number) => {
+    if (isLoading) return;
+    
+    const targetMessage = messages[messageIndex];
+    if (!targetMessage || targetMessage.role !== 'ai') {
+      return;
+    }
+
+    regenerate(targetMessage.id);
+  }, [isLoading, messages, regenerate]);
+
+  const handleEditMessage = useCallback((messageIndex: number, newContent: string) => {
+    if (isLoading || !newContent.trim()) return;
+    
+    const targetMessage = messages[messageIndex];
+    if (!targetMessage) return;
+
+    editMessage(targetMessage.id, newContent);
+  }, [isLoading, messages, editMessage]);
+
+  const handleSendSuggestion = useCallback((text: string) => {
+    if (!text.trim() || isLoading) return;
+    sendMessage(text);
+    setUserScrolledUp(false);
+  }, [isLoading, sendMessage]);
+
+  return (
+    <>
+      <div className={cn('flex h-full flex-col overflow-hidden', className)}>
+        {/* Header */}
+        <ChatHeader agentId={agentId} chatId={chatId} />
+
+        {/* Messages Area */}
+        <div 
+          ref={messagesContainerRef}
+          className="relative flex-1 overflow-y-auto"
+        >
+          <div className="mx-auto max-w-3xl px-4 pt-6 pb-4">
+            {showGreeting && <Greeting agentId={agentId} />}
+            
+            {/* Show skeleton when loading history */}
+            {isLoadingHistory ? (
+              <HistorySkeleton />
+            ) : (
+              <ChatMessages
+                messages={messages}
+                isLoading={showAiLoading}
+                onRegenerate={handleRegenerate}
+                onEditMessage={handleEditMessage}
+              />
+            )}
+
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Scroll to bottom button */}
+          <ScrollToBottom 
+            show={showScrollButton} 
+            onClick={scrollToBottom} 
+            isMobile={isMobile} 
+          />
+        </div>
+
+        {/* Input Area */}
+        <div className={cn(
+          'shrink-0 bg-background px-4 py-4',
+          isMobile && 'pb-6'
+        )}>
+          <div className="mx-auto max-w-3xl">
+            {/* Suggestions */}
+            {showSuggestions && !isLoadingHistory && (
+              <div className="mb-4">
+                <Suggestions agentId={agentId} onSendMessage={handleSendSuggestion} />
+              </div>
+            )}
+
+            {/* Input Form - disable during history loading */}
+            <ChatInput
+              input={input}
+              setInput={setInput}
+              onSubmit={handleSubmit}
+              isLoading={showAiLoading}
+              onStop={stopGeneration}
+              contentBlocks={contentBlocks as any[]}
+              onRemoveBlock={removeBlock}
+              onFileUpload={handleFileUpload}
+              onPaste={handlePaste as any}
+              dropRef={dropRef as any}
+              dragOver={dragOver}
+            />
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}

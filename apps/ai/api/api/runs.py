@@ -234,7 +234,6 @@ async def stream_run(
                 thread_id=thread_id,
                 cancel_on_disconnect=on_disconnect == "cancel",
                 stream_channel=sub,
-                last_event_id=None,
             ):
                 yield event, message, stream_id
         finally:
@@ -285,7 +284,6 @@ async def stream_run_stateless(
                 ignore_404=True,
                 cancel_on_disconnect=on_disconnect == "cancel",
                 stream_channel=sub,
-                last_event_id=None,
             ):
                 yield event, message, stream_id
         finally:
@@ -484,8 +482,7 @@ async def join_run_stream(request: ApiRequest):
     cancel_on_disconnect = cancel_on_disconnect_str.lower() in {"true", "yes", "1"}
     validate_uuid(thread_id, "Invalid thread ID: must be a UUID")
     validate_uuid(run_id, "Invalid run ID: must be a UUID")
-    stream_mode = request.query_params.get("stream_mode") or []
-    last_event_id = request.headers.get("last-event-id") or None
+    stream_mode = request.query_params.get("stream_mode") or None
 
     async def body():
         async with await Runs.Stream.subscribe(run_id, thread_id) as sub:
@@ -495,7 +492,6 @@ async def join_run_stream(request: ApiRequest):
                 cancel_on_disconnect=cancel_on_disconnect,
                 stream_channel=sub,
                 stream_mode=stream_mode,
-                last_event_id=last_event_id,
             ):
                 yield event, message, stream_id
 

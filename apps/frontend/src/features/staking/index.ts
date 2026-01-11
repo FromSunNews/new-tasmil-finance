@@ -3,8 +3,6 @@ export * from './types';
 export * from './constants';
 
 // Components
-export { StakingOperation } from './components/staking-operation';
-export { default as StakingOperationResult } from './components/staking-operation-result';
 export { default as StakingResult } from './components/staking-result';
 
 // Hooks

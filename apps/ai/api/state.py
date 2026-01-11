@@ -43,7 +43,7 @@ def runnable_config_to_checkpoint(
 
 def patch_interrupt(
     interrupt: Interrupt | RemoteInterrupt | dict,
-) -> InterruptSchema | DeprecatedInterrupt:
+) -> InterruptSchema:
     """Convert a langgraph interrupt (v0 or v1) to standard interrupt schema.
 
     In v0.4 and v0.5, interrupt_id is a property on the langgraph.types.Interrupt object,
@@ -79,9 +79,6 @@ def patch_interrupt(
             if hasattr(interrupt, "interrupt_id")
             else None,
             "value": interrupt.value,  # type: ignore[unresolved-attribute]
-            "resumable": interrupt.resumable,  # type: ignore[unresolved-attribute]
-            "ns": interrupt.ns,  # type: ignore[unresolved-attribute]
-            "when": interrupt.when,  # type: ignore[unresolved-attribute]
         }
 
 

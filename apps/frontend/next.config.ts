@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ["@copilotkit/runtime"],
   reactStrictMode: false,
   typescript: {
     // Ignore TypeScript errors during build for generated files

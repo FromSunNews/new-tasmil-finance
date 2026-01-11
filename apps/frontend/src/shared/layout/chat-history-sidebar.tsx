@@ -17,7 +17,7 @@ export function ChatHistorySidebar() {
   const { rightSidebarOpen, setRightSidebarOpen } = useMultiSidebar();
   
   // Get current agent ID from URL
-  const currentAgentId = params['agentId'] as string || "yield";
+  const currentAgentId = params['agentId'] as string || "staking";
   
   // Use threads from provider
   const { getThreads, threads, setThreads, threadsLoading, setThreadsLoading } = useThreads();
@@ -26,12 +26,12 @@ export function ChatHistorySidebar() {
   useEffect(() => {
     if (rightSidebarOpen && typeof window !== "undefined") {
       setThreadsLoading(true);
-      getThreads()
+      getThreads(currentAgentId)
         .then(setThreads)
         .catch(console.error)
         .finally(() => setThreadsLoading(false));
     }
-  }, [rightSidebarOpen, getThreads, setThreads, setThreadsLoading]);
+  }, [rightSidebarOpen, currentAgentId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Convert threads to chat history format
   const chatHistory = threads.map((t: Thread) => {
@@ -102,7 +102,7 @@ export function ChatHistorySidebar() {
 
   const handleRefresh = () => {
     setThreadsLoading(true);
-    getThreads()
+    getThreads(currentAgentId)
       .then(setThreads)
       .catch(console.error)
       .finally(() => setThreadsLoading(false));

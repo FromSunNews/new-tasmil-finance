@@ -1,7 +1,7 @@
 """Custom Checkpointer."""
 
 import asyncio
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
 from typing import Any
 
 import structlog
@@ -13,7 +13,7 @@ from langgraph.checkpoint.base import (
     get_serializable_checkpoint_metadata,
 )
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-from langgraph.checkpoint.postgres.base import ChannelVersions, get_checkpoint_id
+from langgraph.checkpoint.postgres.base import ChannelVersions, get_checkpoint_id, WRITES_IDX_MAP
 from psycopg.rows import DictRow
 from psycopg.types.json import Jsonb
 
@@ -187,16 +187,19 @@ class AsyncPostgresCheckpointer(AsyncPostgresSaver):
             if blob_versions := {
                 k: v for k, v in new_versions.items() if k in blob_values
             }:
-                await cur.executemany(
-                    self.UPSERT_CHECKPOINT_BLOBS_SQL,
-                    await asyncio.to_thread(
-                        self._dump_blobs,
-                        thread_id,
-                        checkpoint_ns,
-                        blob_values,
-                        blob_versions,
-                    ),
+                # Use individual execute calls instead of executemany to avoid pipeline mode issues
+                blob_params = await asyncio.to_thread(
+                    self._dump_blobs,
+                    thread_id,
+                    checkpoint_ns,
+                    blob_values,
+                    blob_versions,
                 )
+                for params in blob_params:
+                    await cur.execute(
+                        self.UPSERT_CHECKPOINT_BLOBS_SQL,
+                        params,
+                    )
             await cur.execute(
                 self.UPSERT_CHECKPOINTS_SQL,
                 (
@@ -209,6 +212,42 @@ class AsyncPostgresCheckpointer(AsyncPostgresSaver):
                 ),
             )
         return next_config
+
+    async def aput_writes(
+        self,
+        config: RunnableConfig,
+        writes: Sequence[tuple[str, Any]],
+        task_id: str,
+        task_path: str = "",
+    ) -> None:
+        """Store intermediate writes linked to a checkpoint asynchronously.
+
+        This method saves intermediate writes associated with a checkpoint to the database.
+        Override to use pipeline=False instead of pipeline=True to avoid pipeline mode errors.
+
+        Args:
+            config: Configuration of the related checkpoint.
+            writes: List of writes to store, each as (channel, value) pair.
+            task_id: Identifier for the task creating the writes.
+            task_path: Path identifier for the task.
+        """
+        query = (
+            self.UPSERT_CHECKPOINT_WRITES_SQL
+            if all(w[0] in WRITES_IDX_MAP for w in writes)
+            else self.INSERT_CHECKPOINT_WRITES_SQL
+        )
+        params = await asyncio.to_thread(
+            self._dump_writes,
+            config["configurable"]["thread_id"],
+            config["configurable"]["checkpoint_ns"],
+            config["configurable"]["checkpoint_id"],
+            task_id,
+            task_path,
+            writes,
+        )
+        async with self._cursor(pipeline=False) as cur:
+            for param in params:
+                await cur.execute(query, param)
 
     async def _load_checkpoint_tuple(self, value: "DictRow") -> CheckpointTuple:
         """Load a checkpoint tuple, handling Fragment for backward compatibility."""

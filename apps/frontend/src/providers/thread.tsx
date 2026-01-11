@@ -11,11 +11,12 @@ import {
   useState,
   Dispatch,
   SetStateAction,
+  useMemo,
 } from "react";
-import { createClient } from "./client";
+import { createClient } from "@/providers/client";
 
 interface ThreadContextType {
-  getThreads: () => Promise<Thread[]>;
+  getThreads: (assistantId: string) => Promise<Thread[]>;
   threads: Thread[];
   setThreads: Dispatch<SetStateAction<Thread[]>>;
   threadsLoading: boolean;
@@ -35,14 +36,12 @@ function getThreadSearchMetadata(
 }
 
 export function ThreadProvider({ children }: { children: ReactNode }) {
-  // Get from env instead of URL params
   const apiUrl = process.env['NEXT_PUBLIC_API_URL'] || "";
-  const assistantId = process.env['NEXT_PUBLIC_ASSISTANT_ID'] || "";
   
   const [threads, setThreads] = useState<Thread[]>([]);
   const [threadsLoading, setThreadsLoading] = useState(false);
 
-  const getThreads = useCallback(async (): Promise<Thread[]> => {
+  const getThreads = useCallback(async (assistantId: string): Promise<Thread[]> => {
     if (!apiUrl || !assistantId) return [];
     const client = createClient(apiUrl, getApiKey() ?? undefined);
 
@@ -54,15 +53,15 @@ export function ThreadProvider({ children }: { children: ReactNode }) {
     });
 
     return threads;
-  }, [apiUrl, assistantId]);
+  }, [apiUrl]);
 
-  const value = {
+  const value = useMemo(() => ({
     getThreads,
     threads,
     setThreads,
     threadsLoading,
     setThreadsLoading,
-  };
+  }), [getThreads, threads, threadsLoading]);
 
   return (
     <ThreadContext.Provider value={value}>{children}</ThreadContext.Provider>

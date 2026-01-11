@@ -30,6 +30,10 @@ from starlette.routing import BaseRoute, Mount
 from starlette.types import Receive, Scope, Send
 
 import api.config as config
+from ag_ui_langgraph import add_langgraph_fastapi_endpoint
+from copilotkit import LangGraphAGUIAgent
+from fastapi import FastAPI as FastAPIApp
+
 from api.api import (
     middleware_for_protected_routes,
     protected_routes,
@@ -37,6 +41,7 @@ from api.api import (
     unshadowable_meta_routes,
     user_router,
 )
+from app.builtin.staking_agent.graph import get_graph
 from api.api.openapi import set_custom_spec
 from api.errors import (
     overloaded_error_handler,
@@ -290,3 +295,17 @@ if config.MOUNT_PREFIX:
         middleware=[Middleware(ASGIBypassMiddleware)] + app.user_middleware,
         exception_handlers=app.exception_handlers,
     )
+
+# Create a separate FastAPI app for CopilotKit endpoint
+copilotkit_app = FastAPIApp()
+add_langgraph_fastapi_endpoint(
+    app=copilotkit_app,
+    agent=LangGraphAGUIAgent(
+        name="staking_agent",
+        description="Blockchain staking assistant for building and submitting transactions.",
+        graph=get_graph(),
+    ),
+    path="/",
+)
+# Mount CopilotKit FastAPI app under /copilotkit
+app.router.routes.insert(0, Mount("/copilotkit", app=copilotkit_app))

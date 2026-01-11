@@ -21,18 +21,12 @@
 import { BridgeResult } from "@/features/bridge";
 import { YieldResult } from "@/features/yield";
 import { ResearchResult } from "@/features/research";
-import { StakingResult, StakingOperationResult, StakingOperation } from "@/features/staking";
-
-// Export StakingOperation for direct use
-export { StakingOperation };
 
 const ComponentMap = {
   // DeFi Agent UI Components
   "bridge-result": BridgeResult,
   "yield-result": YieldResult,
   "research-result": ResearchResult,
-  "staking-result": StakingResult,
-  "staking-operation-result": StakingOperationResult,
 } as const;
 
 export default ComponentMap;
