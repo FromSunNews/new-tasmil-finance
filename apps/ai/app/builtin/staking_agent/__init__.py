@@ -6,6 +6,7 @@ from .graph import (
     get_graph,
     get_mcp_client_config,
     graph,
+    tools,
 )
 
 __all__ = [
@@ -14,4 +15,5 @@ __all__ = [
     "get_graph",
     "get_mcp_client_config",
     "graph",
+    "tools",
 ]
