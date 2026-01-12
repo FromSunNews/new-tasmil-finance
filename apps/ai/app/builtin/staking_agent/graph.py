@@ -32,6 +32,12 @@ MCP_SERVER_URL = os.getenv("MCP_SERVER_URL", "http://localhost:3008/mcp")
 # System prompt for the staking agent
 STAKING_SYSTEM_PROMPT = """You are a U2U Network staking assistant (Chain ID: 39).
 
+## WALLET ADDRESS FROM CONTEXT
+The user's connected wallet address is provided in the context. 
+- If the context contains "User's wallet address: 0x...", use that address for delegatorAddress in read-only queries
+- If the context says "User has not connected their wallet yet", ask them to connect their wallet first
+- NEVER use placeholder addresses like "0xYourDelegatorAddress"
+
 ## Backend Tools (Read-only queries - call these directly):
 - u2u_staking_get_user_stake(validatorID, delegatorAddress): Get user's staked amount
 - u2u_staking_get_pending_rewards(validatorID, delegatorAddress): Get pending rewards
@@ -49,7 +55,7 @@ STAKING_SYSTEM_PROMPT = """You are a U2U Network staking assistant (Chain ID: 39
 IMPORTANT RULES:
 1. DO NOT ask for chain ID - always use U2U Network (Chain ID: 39)
 2. When user wants to stake, call u2u_staking_delegate IMMEDIATELY without any explanation first
-3. When user wants to check stake/rewards, call the appropriate query tool
+3. When user wants to check stake/rewards, use the wallet address from context for delegatorAddress
 4. Call tools directly without asking unnecessary questions or explaining beforehand
 5. If user says "stake 1 U2U to validator 1", call u2u_staking_delegate(validatorID="1", amount="1000000000000000000") immediately
 6. Amount should be in wei (1 U2U = 10^18 wei)
@@ -74,6 +80,7 @@ This ensures the user can sign each transaction one at a time and see the result
 
 ## Read-only queries can be called in parallel
 For read-only queries (get_user_stake, get_pending_rewards, etc.), you CAN call multiple at once.
+Always use the wallet address from context - do NOT ask the user for their address.
 
 ## AFTER receiving a response from a wallet operation tool:
 The tool will return a result with 'success' (true/false), 'hash' (if successful), and other details.
@@ -266,10 +273,29 @@ async def chat_node(
     """Chat node based on the ReAct design pattern."""
     model = init_chat_model("gpt-4o-mini")
     
-    logger.info("chat_node_start", message_count=len(state.get("messages", [])))
+    logger.info("=== STAKING AGENT chat_node called ===", message_count=len(state.get("messages", [])))
     
     # Get frontend tools from CopilotKit (wallet operations)
-    fe_tools = state.get("copilotkit", {}).get("actions", [])
+    copilotkit_state = state.get("copilotkit", {})
+    fe_tools = copilotkit_state.get("actions", [])
+    
+    # Get context from CopilotKit (includes wallet address from useCopilotReadable)
+    context_items = copilotkit_state.get("context", [])
+    context_str = ""
+    if context_items:
+        context_parts = []
+        for item in context_items:
+            if isinstance(item, dict):
+                value = item.get("value", "")
+                description = item.get("description", "")
+                if value:
+                    context_parts.append(f"{description}: {value}" if description else str(value))
+            else:
+                context_parts.append(str(item))
+        context_str = "\n".join(context_parts)
+    
+    logger.info("staking_agent_context", context=context_str[:200] if context_str else "No context")
+    logger.info("staking_agent_tools", backend_tools=[t.name for t in tools], frontend_tools=[t.get("name") for t in fe_tools])
     
     # Combine backend tools (read-only) with frontend tools (wallet operations)
     # Frontend tools are defined via useCopilotAction in the React app
@@ -279,8 +305,12 @@ async def chat_node(
     # Disable parallel tool calls for wallet operations to ensure sequential execution
     model_with_tools = model.bind_tools(all_tools, parallel_tool_calls=False)
     
-    # Build messages with system prompt
-    system_message = SystemMessage(content=STAKING_SYSTEM_PROMPT)
+    # Build system prompt with context (includes wallet address)
+    system_content = STAKING_SYSTEM_PROMPT
+    if context_str:
+        system_content = f"{STAKING_SYSTEM_PROMPT}\n\n## CURRENT CONTEXT:\n{context_str}"
+    
+    system_message = SystemMessage(content=system_content)
     
     # Get model response
     response = await model_with_tools.ainvoke(

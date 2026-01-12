@@ -5,6 +5,7 @@ import { type LucideIcon, Settings, Sparkles, Bot } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/shared/ui/card";
 import { Badge } from "@/shared/ui/badge";
 import { Avatar, AvatarFallback } from "@/shared/ui/avatar";
+import { TokenIcon } from "@web3icons/react/dynamic";
 import type { Assistant } from "@/gen/types/assistant";
 
 // Define metadata interface based on the response structure
@@ -33,35 +34,66 @@ const getTypeIcon = (type: string): LucideIcon => {
   return type === "Strategy" ? Settings : Sparkles;
 };
 
-// Map chain name to display name and color
-const getChainInfo = (chainName: string) => {
-  const chainMap: Record<string, { name: string; color: string }> = {
-    ethereum: { name: "ETH", color: "bg-blue-500" },
-    eth: { name: "ETH", color: "bg-blue-500" },
-    polygon: { name: "MATIC", color: "bg-purple-500" },
-    bsc: { name: "BSC", color: "bg-yellow-500" },
-    arbitrum: { name: "ARB", color: "bg-blue-400" },
-    optimism: { name: "OP", color: "bg-red-500" },
-    avalanche: { name: "AVAX", color: "bg-red-400" },
-    fantom: { name: "FTM", color: "bg-blue-600" },
-    u2u: { name: "U2U", color: "bg-cyan-500" },
-    "u2u solaris": { name: "U2", color: "bg-cyan-500" },
+// Map chain name to token symbol for web3icons
+const getChainTokenSymbol = (chainName: string): string => {
+  const chainMap: Record<string, string> = {
+    'ethereum': 'eth',
+    'eth': 'eth',
+    'arbitrum': 'arb',
+    'avalanche': 'avax',
+    'avax': 'avax',
+    'bnb': 'bnb',
+    'bsc': 'bnb',
+    'base': 'base',
+    'blast': 'blast',
+    'celo': 'celo',
+    'fantom': 'ftm',
+    'gnosis': 'gno',
+    'linea': 'linea',
+    'manta': 'manta',
+    'mantle': 'mnt',
+    'metis': 'metis',
+    'mode': 'mode',
+    'moonbeam': 'glmr',
+    'optimism': 'op',
+    'op': 'op',
+    'polygon': 'matic',
+    'scroll': 'scr',
+    'solana': 'sol',
+    'aurora': 'aurora',
+    'zksync': 'zk',
   };
+  
+  const normalized = chainName.toLowerCase().replace(/\s+/g, '');
+  return chainMap[normalized] || normalized;
+};
 
-  const normalized = chainName.toLowerCase();
-  return chainMap[normalized] || { name: chainName.toUpperCase().slice(0, 3), color: "bg-gray-500" };
+// Check if chain is U2U (use PNG instead of web3icons)
+const isU2UChain = (chainName: string): boolean => {
+  const normalized = chainName.toLowerCase().replace(/\s+/g, '');
+  return normalized === 'u2u' || normalized === 'u2usolaris';
 };
 
 // Chain icon component
-function ChainIcon({ chain }: { chain: string }) {
-  const chainInfo = getChainInfo(chain);
-
+function ChainIcon({ chain, size = 22 }: { chain: string; size?: number }) {
+  if (isU2UChain(chain)) {
+    return (
+      <Image
+        src="/images/tokens/u2u.png"
+        alt="U2U"
+        width={size}
+        height={size}
+        className="rounded-full object-cover"
+      />
+    );
+  }
+  
   return (
-    <Avatar className="flex h-8 w-8 items-center justify-center ring-0">
-      <AvatarFallback className={`${chainInfo.color} font-bold text-white text-xs`}>
-        {chainInfo.name.slice(0, 2)}
-      </AvatarFallback>
-    </Avatar>
+    <TokenIcon
+      symbol={getChainTokenSymbol(chain)}
+      variant="branded"
+      size={size}
+    />
   );
 }
 
@@ -72,7 +104,7 @@ export function AgentCard({ assistant, onClick }: AgentCardProps) {
   const agentType = metadata?.type || "Intelligence";
   const agentIcon = metadata?.icon;
   const agentDescription = metadata?.description || ["No description available"];
-  const supportedChains = metadata?.supportedChains || ["U2U Solaris"];
+  const supportedChains = metadata?.supportedChains || [];
   
   const TypeIcon = getTypeIcon(agentType);
 
@@ -89,7 +121,7 @@ export function AgentCard({ assistant, onClick }: AgentCardProps) {
         {/* Icon and Title in horizontal layout */}
         <div className="flex items-center gap-4">
           {/* Agent Icon */}
-          <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-primary/20 to-primary/5">
+          <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-lg">
             {agentIcon ? (
               <Image
                 src={agentIcon}
@@ -130,7 +162,12 @@ export function AgentCard({ assistant, onClick }: AgentCardProps) {
               <span className="text-muted-foreground text-sm">Supported Chains</span>
               <div className="-space-x-2 flex items-center">
                 {displayChains.map((chain, index) => (
-                  <ChainIcon key={index} chain={chain} />
+                  <Avatar 
+                    key={index} 
+                    className="h-8 w-8 ring-0 flex items-center justify-center bg-secondary"
+                  >
+                    <ChainIcon chain={chain} size={22} />
+                  </Avatar>
                 ))}
                 {extraChains > 0 && (
                   <Avatar className="z-10 h-8 w-8">

@@ -5,6 +5,12 @@
  * 
  * Wraps CopilotKit with proper threadId handling.
  * Uses key prop to force remount when thread changes.
+ * 
+ * Supported agents:
+ * - staking_agent: U2U Network staking operations
+ * - bridge_agent: Cross-chain token bridging
+ * - research_agent: Crypto market research
+ * - yield_agent: DeFi yield farming
  */
 
 import { CopilotKit } from "@copilotkit/react-core";
@@ -16,6 +22,9 @@ interface CopilotKitWrapperProps {
   agentId?: string;
 }
 
+// Valid agent IDs that match backend LANGSERVE_GRAPHS config
+export type AgentId = "staking_agent" | "bridge_agent" | "research_agent" | "yield_agent";
+
 export function CopilotKitWrapper({ 
   children, 
   threadId,
@@ -24,11 +33,14 @@ export function CopilotKitWrapper({
   const isNewChat = !threadId || threadId === 'new';
   const effectiveThreadId = isNewChat ? undefined : threadId;
   
-  // Generate unique key for new chats to force fresh CopilotKit instance
-  // For existing threads, use threadId as key
+  // Generate unique key that includes agentId to force remount when agent changes
+  // For new chats, include timestamp to ensure fresh instance
   const copilotKey = useMemo(() => {
-    return isNewChat ? `new-${Date.now()}` : threadId;
-  }, [isNewChat, threadId]);
+    return isNewChat ? `${agentId}-new-${Date.now()}` : `${agentId}-${threadId}`;
+  }, [isNewChat, threadId, agentId]);
+
+  // Debug log
+  console.log('[CopilotKitWrapper] agentId:', agentId, 'threadId:', threadId, 'key:', copilotKey);
 
   return (
     <CopilotKit

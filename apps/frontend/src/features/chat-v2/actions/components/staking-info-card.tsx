@@ -100,7 +100,7 @@ export function StakingInfoCard({ type, args, result, status }: StakingInfoCardP
   // Loading state
   if (status === "pending" || status === "executing") {
     return (
-      <div className="max-w-sm rounded-lg border bg-card/40 p-6 shadow-sm">
+      <div className="w-fit rounded-lg border bg-card/40 p-6 shadow-sm">
         <div className="flex items-center gap-3">
           <div className={`flex h-10 w-10 items-center justify-center rounded-full ${config.bgColor}`}>
             <Loader2 className={`h-5 w-5 ${config.iconColor} animate-spin`} />
@@ -121,7 +121,7 @@ export function StakingInfoCard({ type, args, result, status }: StakingInfoCardP
       : "Failed to fetch data";
     
     return (
-      <div className="max-w-sm rounded-lg border border-destructive/30 bg-destructive/5 p-6 shadow-sm">
+      <div className="w-fit rounded-lg border border-destructive/30 bg-destructive/5 p-6 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10">
             <AlertCircle className="h-5 w-5 text-destructive" />
@@ -141,7 +141,7 @@ export function StakingInfoCard({ type, args, result, status }: StakingInfoCardP
   const delegatorAddress = args['delegator_address'] || data['delegatorAddress'];
 
   return (
-    <div className="max-w-sm rounded-lg border bg-card/40 p-6 shadow-sm">
+    <div className="w-fit min-w-[280px] rounded-lg border bg-card/40 p-6 shadow-sm">
       <div className="mb-4 flex items-center gap-3">
         <div className={`flex h-10 w-10 items-center justify-center rounded-full ${config.bgColor}`}>
           <Icon className={`h-5 w-5 ${config.iconColor}`} />

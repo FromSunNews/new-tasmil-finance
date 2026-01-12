@@ -25,6 +25,29 @@ interface AssistantMetadata {
   supportedChains?: string[];
 }
 
+// Valid agent graph_ids to display (filter out legacy/test agents)
+const VALID_AGENT_IDS = ["staking_agent", "bridge_agent", "research_agent", "yield_agent"];
+
+// Map icon paths from /sidebar/ to /agents/ and ensure correct format
+const normalizeIconPath = (icon: string | undefined, graphId: string): string => {
+  // Default icons based on graph_id
+  const defaultIcons: Record<string, string> = {
+    staking_agent: "/agents/staking-agent.svg",
+    bridge_agent: "/agents/bridge-agent.svg",
+    research_agent: "/agents/research-agent.svg",
+    yield_agent: "/agents/yield-agent.svg",
+  };
+  
+  if (!icon) return defaultIcons[graphId] || "/agents/staking-agent.svg";
+  
+  // Convert /sidebar/ paths to /agents/
+  if (icon.includes("/sidebar/")) {
+    return icon.replace("/sidebar/", "/agents/").replace(".png", ".svg");
+  }
+  
+  return icon;
+};
+
 export default function AgentsPage() {
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState("All");
@@ -40,23 +63,44 @@ export default function AgentsPage() {
     }
   }, []);
 
-  // Get unique types from API data for filter bar
-  const availableTypes = useMemo(() => {
+  // Get unique types from API data for filter bar (only from valid agents)
+  const validAgents = useMemo(() => {
     if (!searchAssistants.data) return [];
     
-    const types = searchAssistants.data
+    return searchAssistants.data.filter((assistant) => {
+      const metadata = assistant.metadata as AssistantMetadata;
+      // Filter by valid graph_id AND must have proper metadata (not "Untitled")
+      return (
+        VALID_AGENT_IDS.includes(assistant.graph_id || "") &&
+        metadata?.name &&
+        metadata.name !== "Untitled" &&
+        metadata.type // Must have a type defined
+      );
+    }).map((assistant) => {
+      // Normalize icon paths
+      const metadata = assistant.metadata as AssistantMetadata;
+      return {
+        ...assistant,
+        metadata: {
+          ...metadata,
+          icon: normalizeIconPath(metadata?.icon, assistant.graph_id || ""),
+        },
+      };
+    });
+  }, [searchAssistants.data]);
+
+  const availableTypes = useMemo(() => {
+    const types = validAgents
       .map(assistant => (assistant.metadata as AssistantMetadata)?.type)
       .filter((type): type is "Strategy" | "Intelligence" => Boolean(type))
       .filter((type, index, array) => array.indexOf(type) === index);
     
     return types;
-  }, [searchAssistants.data]);
+  }, [validAgents]);
 
   // Filter agents based on type and search query
   const filteredAgents = useMemo(() => {
-    if (!searchAssistants.data) return [];
-
-    return searchAssistants.data.filter((assistant) => {
+    return validAgents.filter((assistant) => {
       const metadata = assistant.metadata as AssistantMetadata;
       
       const matchesFilter =
@@ -72,7 +116,7 @@ export default function AgentsPage() {
 
       return matchesFilter && matchesSearch;
     });
-  }, [searchAssistants.data, activeFilter, searchQuery]);
+  }, [validAgents, activeFilter, searchQuery]);
 
   const handleAgentClick = (assistant: Assistant) => {
     // Navigate đến /new, thread sẽ được tạo khi gửi message đầu tiên
@@ -82,7 +126,7 @@ export default function AgentsPage() {
   return (
     <main className="h-full bg-background">
       <div className="container mx-auto px-4 md:px-6">
-        <HeroSection agentCount={searchAssistants.data?.length || 0} />
+        <HeroSection agentCount={validAgents.length} />
 
         <FilterBar
           activeFilter={activeFilter}

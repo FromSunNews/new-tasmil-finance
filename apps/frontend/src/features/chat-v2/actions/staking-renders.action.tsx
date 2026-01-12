@@ -20,15 +20,10 @@ const mapStatus = (status: CopilotStatus): ComponentStatus => {
 };
 
 /**
- * Register all staking-related tool renders
- * - Read-only operations use useRenderToolCall (backend tools)
- * - Wallet operations use useHumanInTheLoop (frontend HITL)
+ * Register read-only staking tool renders (useRenderToolCall)
+ * These just display results from backend tools - safe for all agents
  */
-export function useStakingRenders() {
-  // ============================================================================
-  // READ-ONLY OPERATIONS - Use useRenderToolCall for backend tools
-  // ============================================================================
-
+export function useStakingReadOnlyRenders() {
   useRenderToolCall({
     name: "u2u_staking_get_user_stake",
     render: ({ args, result, status }) => (
@@ -88,14 +83,14 @@ export function useStakingRenders() {
       />
     ),
   });
+}
 
-  // ============================================================================
-  // WALLET OPERATIONS - Use useHumanInTheLoop
-  // This creates frontend tools that pause execution until user signs transaction
-  // Transaction result is sent back to agent via respond() and persisted
-  // Description includes instruction for agent to say appropriate message
-  // ============================================================================
-
+/**
+ * Register staking wallet operation tools (useHumanInTheLoop)
+ * These create frontend tools that require user to sign transactions
+ * ONLY call this for staking_agent!
+ */
+export function useStakingWalletTools() {
   useHumanInTheLoop({
     name: "u2u_staking_delegate",
     description: "Stake tokens to a validator on U2U Network. When calling this tool, first tell the user: 'I've prepared the staking transaction for you. Please review the details and click the button to sign the transaction with your wallet.' User must sign the transaction.",
@@ -190,4 +185,10 @@ export function useStakingRenders() {
       />
     ),
   });
+}
+
+// Legacy export for backward compatibility
+export function useStakingRenders() {
+  useStakingReadOnlyRenders();
+  useStakingWalletTools();
 }

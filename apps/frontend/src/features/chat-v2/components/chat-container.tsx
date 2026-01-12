@@ -3,12 +3,14 @@
 // 🎨 Chat container - main chat layout
 
 import { useState, useRef, useEffect, FormEvent, useCallback } from 'react';
+import { useAccount } from 'wagmi';
+import { useCopilotReadable } from '@copilotkit/react-core';
 import { cn } from '@/lib/utils';
 import { useFileUpload } from '@/shared/hooks/use-file-upload';
 import { useIsMobile } from '@/shared/hooks/use-mobile';
 
 import { useChatSession } from '@/features/chat-v2/hooks';
-import { useDefiActions } from '@/features/chat-v2/actions';
+import { useDefiActions, useStakingActions } from '@/features/chat-v2/actions';
 import { ChatHeader } from '@/features/chat-v2/components/chat-header';
 import { ChatMessages } from '@/features/chat-v2/components/chat-messages';
 import { ChatInput } from '@/features/chat-v2/components/chat-input';
@@ -22,6 +24,13 @@ interface ChatContainerProps {
   chatId: string;
   onNewThread?: (threadId: string) => void;
   className?: string;
+}
+
+// Wrapper component to conditionally register staking wallet tools
+// This avoids the "hooks called conditionally" React error
+function StakingActionsProvider({ children }: { children: React.ReactNode }) {
+  useStakingActions();
+  return <>{children}</>;
 }
 
 export function ChatContainer({ 
@@ -38,8 +47,21 @@ export function ChatContainer({
   const [userScrolledUp, setUserScrolledUp] = useState(false);
   const lastMessageCountRef = useRef(0);
 
-  // Initialize DeFi actions
-  useDefiActions();
+  // Get connected wallet address
+  const { address, isConnected } = useAccount();
+
+  // Make wallet address available to the AI agent
+  // This allows the agent to automatically use the user's wallet address
+  // for read-only queries without asking
+  useCopilotReadable({
+    description: "The user's connected wallet address for blockchain operations",
+    value: isConnected && address 
+      ? `User's wallet address: ${address}` 
+      : "User has not connected their wallet yet. Ask them to connect their wallet first.",
+  });
+
+  // Initialize DeFi actions (read-only renders for all agents)
+  useDefiActions(agentId);
 
   // File upload hook
   const {
@@ -152,73 +174,79 @@ export function ChatContainer({
     setUserScrolledUp(false);
   }, [isLoading, sendMessage]);
 
-  return (
-    <>
-      <div className={cn('flex h-full flex-col overflow-hidden', className)}>
-        {/* Header */}
-        <ChatHeader agentId={agentId} chatId={chatId} />
+  const content = (
+    <div className={cn('flex h-full flex-col overflow-hidden', className)}>
+      {/* Header */}
+      <ChatHeader agentId={agentId} chatId={chatId} />
 
-        {/* Messages Area */}
-        <div 
-          ref={messagesContainerRef}
-          className="relative flex-1 overflow-y-auto"
-        >
-          <div className="mx-auto max-w-3xl px-4 pt-6 pb-4">
-            {showGreeting && <Greeting agentId={agentId} />}
-            
-            {/* Show skeleton only when loading history */}
-            {isLoadingHistory ? (
-              <HistorySkeleton />
-            ) : (
-              <ChatMessages
-                messages={messages}
-                isLoading={showAiLoading}
-                onRegenerate={handleRegenerate}
-                onEditMessage={handleEditMessage}
-              />
-            )}
+      {/* Messages Area */}
+      <div 
+        ref={messagesContainerRef}
+        className="relative flex-1 overflow-y-auto"
+      >
+        <div className="mx-auto max-w-3xl px-4 pt-6 pb-4">
+          {showGreeting && <Greeting agentId={agentId} />}
+          
+          {/* Show skeleton only when loading history */}
+          {isLoadingHistory ? (
+            <HistorySkeleton />
+          ) : (
+            <ChatMessages
+              messages={messages}
+              isLoading={showAiLoading}
+              onRegenerate={handleRegenerate}
+              onEditMessage={handleEditMessage}
+            />
+          )}
 
-            <div ref={messagesEndRef} />
-          </div>
+          <div ref={messagesEndRef} />
+        </div>
 
-          {/* Scroll to bottom button */}
-          <ScrollToBottom 
-            show={showScrollButton} 
-            onClick={scrollToBottom} 
-            isMobile={isMobile} 
+        {/* Scroll to bottom button */}
+        <ScrollToBottom 
+          show={showScrollButton} 
+          onClick={scrollToBottom} 
+          isMobile={isMobile} 
+        />
+      </div>
+
+      {/* Input Area */}
+      <div className={cn(
+        'shrink-0 bg-background px-4 py-4',
+        isMobile && 'pb-6'
+      )}>
+        <div className="mx-auto max-w-3xl">
+          {/* Suggestions */}
+          {showSuggestions && !isLoadingHistory && (
+            <div className="mb-4">
+              <Suggestions agentId={agentId} onSendMessage={handleSendSuggestion} />
+            </div>
+          )}
+
+          {/* Input Form - disable during history loading */}
+          <ChatInput
+            input={input}
+            setInput={setInput}
+            onSubmit={handleSubmit}
+            isLoading={showAiLoading}
+            onStop={stopGeneration}
+            contentBlocks={contentBlocks as any[]}
+            onRemoveBlock={removeBlock}
+            onFileUpload={handleFileUpload}
+            onPaste={handlePaste as any}
+            dropRef={dropRef as any}
+            dragOver={dragOver}
           />
         </div>
-
-        {/* Input Area */}
-        <div className={cn(
-          'shrink-0 bg-background px-4 py-4',
-          isMobile && 'pb-6'
-        )}>
-          <div className="mx-auto max-w-3xl">
-            {/* Suggestions */}
-            {showSuggestions && !isLoadingHistory && (
-              <div className="mb-4">
-                <Suggestions agentId={agentId} onSendMessage={handleSendSuggestion} />
-              </div>
-            )}
-
-            {/* Input Form - disable during history loading */}
-            <ChatInput
-              input={input}
-              setInput={setInput}
-              onSubmit={handleSubmit}
-              isLoading={showAiLoading}
-              onStop={stopGeneration}
-              contentBlocks={contentBlocks as any[]}
-              onRemoveBlock={removeBlock}
-              onFileUpload={handleFileUpload}
-              onPaste={handlePaste as any}
-              dropRef={dropRef as any}
-              dragOver={dragOver}
-            />
-          </div>
-        </div>
       </div>
-    </>
+    </div>
   );
+
+  // Wrap with StakingActionsProvider only for staking_agent
+  // This registers wallet operation tools (useHumanInTheLoop) only for staking
+  if (agentId === 'staking_agent') {
+    return <StakingActionsProvider>{content}</StakingActionsProvider>;
+  }
+
+  return content;
 }

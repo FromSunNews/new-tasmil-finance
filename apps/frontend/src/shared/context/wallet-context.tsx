@@ -42,6 +42,14 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // Track if authentication is currently in progress
   const authInProgressRef = useRef(false);
 
+  // Check if current auth state is valid (token exists and user matches address)
+  const isAuthValid = useCallback((walletAddress: string) => {
+    const { accessToken, user } = useAuthStore.getState();
+    if (!accessToken || !user) return false;
+    // Check if user's wallet address matches current connected address
+    return user.walletAddress?.toLowerCase() === walletAddress.toLowerCase();
+  }, []);
+
   // Mock authentication function (replace with your actual API calls)
   const authenticateWithWallet = useCallback(
     async (walletAddress: string, forceReauth = false) => {
@@ -50,9 +58,17 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         return;
       }
 
-      // Skip if already authenticated with this address
-      if (!forceReauth && authAttemptedRef.current === walletAddress) {
-        return;
+      // Skip if already authenticated with this address and not forcing reauth
+      if (!forceReauth) {
+        // Check if we have valid auth state (persisted in localStorage via zustand)
+        if (isAuthValid(walletAddress)) {
+          authAttemptedRef.current = walletAddress;
+          return;
+        }
+        // Also skip if we've already attempted for this address in this session
+        if (authAttemptedRef.current === walletAddress && isAuthenticated) {
+          return;
+        }
       }
 
       authAttemptedRef.current = walletAddress;
@@ -116,7 +132,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         toast.error(errorMessage);
       }
     },
-    [signMessageAsync, setAuthState, setLoading, setSigning]
+    [signMessageAsync, setAuthState, setLoading, setSigning, isAuthValid, isAuthenticated]
   );
 
   // Handle wallet connection changes
@@ -129,7 +145,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       });
     }
 
-    // If wallet is connected, authenticate
+    // If wallet is connected, authenticate (will skip if already valid)
     if (isConnected && address) {
       authenticateWithWallet(address);
     } else if (!isConnected) {

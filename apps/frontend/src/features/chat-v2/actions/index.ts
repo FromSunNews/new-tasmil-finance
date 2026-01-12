@@ -1,32 +1,38 @@
 // ⚡ CopilotKit actions - Public exports
 
-// Frontend actions (useCopilotAction) - These are sent to backend
-// REMOVED: useStakingAction - Now handled by backend MCP tools with useRenderToolCall
-export { useBridgeAction } from '@/features/chat-v2/actions/bridge.action';
-export { useYieldAction } from '@/features/chat-v2/actions/yield.action';
-export { usePortfolioAction } from '@/features/chat-v2/actions/portfolio.action';
-
 // 🎨 Tool renders for custom UI (useRenderToolCall)
 // These render custom UI when backend tools are called
 export { useStakingRenders } from '@/features/chat-v2/actions/staking-renders.action';
+export { useBridgeRenders } from '@/features/chat-v2/actions/bridge-renders.action';
+export { useYieldRenders } from '@/features/chat-v2/actions/yield-renders.action';
+export { useResearchRenders } from '@/features/chat-v2/actions/research.action';
 
 // UI Components
 export * from '@/features/chat-v2/actions/components';
 
-// Combined hook to register all DeFi actions and renders
-import { useBridgeAction } from '@/features/chat-v2/actions/bridge.action';
-import { useYieldAction } from '@/features/chat-v2/actions/yield.action';
-import { usePortfolioAction } from '@/features/chat-v2/actions/portfolio.action';
-import { useStakingRenders } from '@/features/chat-v2/actions/staking-renders.action';
+// Combined hook to register all DeFi renders
+import { useStakingReadOnlyRenders, useStakingWalletTools } from '@/features/chat-v2/actions/staking-renders.action';
+import { useBridgeRenders } from '@/features/chat-v2/actions/bridge-renders.action';
+import { useYieldRenders } from '@/features/chat-v2/actions/yield-renders.action';
+import { useResearchRenders } from '@/features/chat-v2/actions/research.action';
 
-export function useDefiActions() {
-  // Frontend actions (useCopilotAction) - sent to backend as available tools
-  // NOTE: Staking is now handled by backend MCP tools, not frontend actions
-  useBridgeAction();
-  useYieldAction();
-  usePortfolioAction();
-  
-  // Backend tool renders (useRenderToolCall) - Custom UI for backend MCP tools
-  // These will render UI when backend calls u2u_staking_* tools
-  useStakingRenders();
+/**
+ * Register DeFi actions based on current agent
+ * - Staking wallet tools (useHumanInTheLoop) only for staking_agent
+ * - Renders (useRenderToolCall) for all agents to display backend tool results
+ */
+export function useDefiActions(_agentId?: string) {
+  // Register read-only renders for all agents (they just display backend tool results)
+  useStakingReadOnlyRenders();
+  useBridgeRenders();
+  useYieldRenders();
+  useResearchRenders();
+}
+
+/**
+ * Register staking wallet tools - ONLY call this for staking_agent
+ * This is a separate hook to avoid registering wallet tools for other agents
+ */
+export function useStakingActions() {
+  useStakingWalletTools();
 }

@@ -298,14 +298,53 @@ if config.MOUNT_PREFIX:
 
 # Create a separate FastAPI app for CopilotKit endpoint
 copilotkit_app = FastAPIApp()
+
+# Import all agent graphs
+from app.builtin.staking_agent import graph as staking_graph
+from app.builtin.research_agent import graph as research_graph
+from app.builtin.yield_agent import graph as yield_graph
+from app.builtin.bridge_agent import graph as bridge_graph
+
+# Register all agents with their own paths
 add_langgraph_fastapi_endpoint(
     app=copilotkit_app,
     agent=LangGraphAGUIAgent(
         name="staking_agent",
-        description="Blockchain staking assistant for building and submitting transactions.",
-        graph=get_graph(),
+        description="U2U Network staking assistant",
+        graph=staking_graph,
     ),
-    path="/",
+    path="/agents/staking_agent",
 )
+
+add_langgraph_fastapi_endpoint(
+    app=copilotkit_app,
+    agent=LangGraphAGUIAgent(
+        name="research_agent",
+        description="Crypto market research and analysis",
+        graph=research_graph,
+    ),
+    path="/agents/research_agent",
+)
+
+add_langgraph_fastapi_endpoint(
+    app=copilotkit_app,
+    agent=LangGraphAGUIAgent(
+        name="yield_agent",
+        description="DeFi yield farming opportunities",
+        graph=yield_graph,
+    ),
+    path="/agents/yield_agent",
+)
+
+add_langgraph_fastapi_endpoint(
+    app=copilotkit_app,
+    agent=LangGraphAGUIAgent(
+        name="bridge_agent",
+        description="Cross-chain token bridging",
+        graph=bridge_graph,
+    ),
+    path="/agents/bridge_agent",
+)
+
 # Mount CopilotKit FastAPI app under /copilotkit
 app.router.routes.insert(0, Mount("/copilotkit", app=copilotkit_app))
