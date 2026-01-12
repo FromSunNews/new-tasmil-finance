@@ -1,9 +1,14 @@
 "use client";
 
-// 🔌 CopilotKit wrapper with threadId support for message persistence
+/**
+ * 🔌 CopilotKit Wrapper
+ * 
+ * Wraps CopilotKit with proper threadId handling.
+ * Uses key prop to force remount when thread changes.
+ */
 
 import { CopilotKit } from "@copilotkit/react-core";
-import { type ReactNode } from "react";
+import { type ReactNode, useMemo } from "react";
 
 interface CopilotKitWrapperProps {
   children: ReactNode;
@@ -11,25 +16,19 @@ interface CopilotKitWrapperProps {
   agentId?: string;
 }
 
-/**
- * Wrapper component that provides CopilotKit with threadId
- * This ensures messages are persisted to the correct LangGraph thread
- * 
- * IMPORTANT: We use `key` prop to force CopilotKit to remount when threadId changes.
- * This ensures that when navigating from /new to /{threadId}, CopilotKit
- * reinitializes with the correct threadId for message persistence.
- */
 export function CopilotKitWrapper({ 
   children, 
   threadId,
   agentId = "staking_agent" 
 }: CopilotKitWrapperProps) {
-  // Only pass threadId if it's a valid UUID (not 'new' or null)
-  const effectiveThreadId = threadId && threadId !== 'new' ? threadId : undefined;
+  const isNewChat = !threadId || threadId === 'new';
+  const effectiveThreadId = isNewChat ? undefined : threadId;
   
-  // Use threadId as key to force remount when it changes
-  // This ensures CopilotKit is properly initialized with the new threadId
-  const copilotKey = effectiveThreadId || 'new-chat';
+  // Generate unique key for new chats to force fresh CopilotKit instance
+  // For existing threads, use threadId as key
+  const copilotKey = useMemo(() => {
+    return isNewChat ? `new-${Date.now()}` : threadId;
+  }, [isNewChat, threadId]);
 
   return (
     <CopilotKit

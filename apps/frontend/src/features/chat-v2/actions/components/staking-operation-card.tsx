@@ -148,23 +148,11 @@ export function StakingOperationCard({
   const persistedResult = result as Record<string, unknown> | undefined;
   const hasPersistedResult = persistedResult && persistedResult["success"] !== undefined;
   
-  // Debug: log what we receive from CopilotKit
-  console.log('[StakingOperationCard] Debug:', {
-    operation,
-    status,
-    result,
-    persistedResult,
-    hasPersistedResult,
-    args,
-  });
-  
   const effectiveResult = txResult || (hasPersistedResult ? {
     success: Boolean(persistedResult["success"]),
     hash: persistedResult["hash"] as string | undefined,
     message: String(persistedResult["message"] || (persistedResult["success"] ? "Transaction successful!" : "Transaction failed")),
   } : null);
-  
-  console.log('[StakingOperationCard] effectiveResult:', effectiveResult);
 
   // Check if any hook is pending
   const isPending =
@@ -203,12 +191,14 @@ export function StakingOperationCard({
           break;
 
         case "undelegate":
-          if (!amountWei || !wrID) {
-            throw new Error("Amount and withdrawal request ID are required");
+          if (!amountWei) {
+            throw new Error("Amount is required for undelegation");
           }
+          // If wrID is not provided, generate a random one (same as MCP server logic)
+          const effectiveWrID = wrID ? Number(wrID) : Math.floor(Math.random() * 1_000_000);
           walletResult = await undelegateStake.undelegateStake(
             validatorNum,
-            Number(wrID),
+            effectiveWrID,
             amountStr
           );
           break;
@@ -284,7 +274,7 @@ export function StakingOperationCard({
     const explorerUrl = hash ? `https://u2uscan.xyz/tx/${hash}` : "";
 
     return (
-      <div className="max-w-sm rounded-lg border bg-card/40 p-6 shadow-sm mt-4">
+      <div className="max-w-sm rounded-lg border bg-card/40 p-6 shadow-sm">
         <div className="mb-4 flex items-center gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-500/10">
             <CheckCircle className="h-5 w-5 text-green-600" />
@@ -343,7 +333,7 @@ export function StakingOperationCard({
     const errorMessage = effectiveResult?.message || "Transaction failed";
     
     return (
-      <div className="max-w-sm rounded-lg border bg-card p-6 shadow-sm mt-4">
+      <div className="max-w-sm rounded-lg border bg-card p-6 shadow-sm">
         <div className="mb-4 flex items-center gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/10">
             <AlertCircle className="h-5 w-5 text-destructive" />
@@ -380,7 +370,7 @@ export function StakingOperationCard({
   // When status is "executing" with respond function, we should show the form for user to sign
   if (status === "pending") {
     return (
-      <div className="max-w-sm rounded-lg border bg-card/40 p-6 shadow-sm mt-4">
+      <div className="max-w-sm rounded-lg border bg-card/40 p-6 shadow-sm">
         <div className="flex items-center gap-3">
           <div
             className={`flex h-10 w-10 items-center justify-center rounded-full ${config.bgColor}`}
@@ -400,7 +390,7 @@ export function StakingOperationCard({
 
   // Show pending operation UI (ready for wallet interaction)
   return (
-    <div className="max-w-sm rounded-lg border bg-card p-6 shadow-sm mt-4">
+    <div className="max-w-sm rounded-lg border bg-card p-6 shadow-sm">
       {/* Header */}
       <div className="mb-4 flex items-center gap-3">
         <div

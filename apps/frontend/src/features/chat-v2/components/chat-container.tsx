@@ -166,7 +166,7 @@ export function ChatContainer({
           <div className="mx-auto max-w-3xl px-4 pt-6 pb-4">
             {showGreeting && <Greeting agentId={agentId} />}
             
-            {/* Show skeleton when loading history */}
+            {/* Show skeleton only when loading history */}
             {isLoadingHistory ? (
               <HistorySkeleton />
             ) : (

@@ -28,9 +28,18 @@ export function AssistantLoading({ className }: AssistantLoadingProps) {
     <div className={cn('mr-auto flex items-start gap-3', className)}>
       <AgentAvatar />
       <div className="bg-muted flex h-8 items-center gap-1 rounded-2xl px-4 py-2">
-        <div className="bg-foreground/50 h-1.5 w-1.5 animate-wave rounded-full"></div>
-        <div className="bg-foreground/50 h-1.5 w-1.5 animate-wave rounded-full [animation-delay:0.15s]"></div>
-        <div className="bg-foreground/50 h-1.5 w-1.5 animate-wave rounded-full [animation-delay:0.3s]"></div>
+        <div 
+          className="bg-foreground/50 h-1.5 w-1.5 rounded-full animate-wave"
+          style={{ animationDelay: '0s' }}
+        />
+        <div 
+          className="bg-foreground/50 h-1.5 w-1.5 rounded-full animate-wave"
+          style={{ animationDelay: '0.15s' }}
+        />
+        <div 
+          className="bg-foreground/50 h-1.5 w-1.5 rounded-full animate-wave"
+          style={{ animationDelay: '0.3s' }}
+        />
       </div>
     </div>
   );

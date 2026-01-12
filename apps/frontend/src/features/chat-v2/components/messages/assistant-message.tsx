@@ -19,6 +19,15 @@ interface AssistantMessageProps {
   className?: string;
 }
 
+// Frontend tools that have custom UI via generativeUI - don't show tool call indicator for these
+const FRONTEND_TOOLS = new Set([
+  'u2u_staking_delegate',
+  'u2u_staking_undelegate', 
+  'u2u_staking_claim_rewards',
+  'u2u_staking_restake_rewards',
+  'u2u_staking_lock_stake',
+]);
+
 function AgentAvatar() {
   return (
     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full overflow-hidden">
@@ -43,13 +52,16 @@ function AssistantMessageComponent({
   const { hideToolCalls } = useChatState();
 
   // Convert toolCalls to old format for ToolCalls component
-  const toolCalls = message.toolCalls?.map(tc => ({
-    id: tc.id,
-    name: tc.name,
-    args: tc.args,
-    result: tc.result,
-    status: tc.status,
-  }));
+  // Filter out frontend tools that have custom generativeUI
+  const toolCalls = message.toolCalls
+    ?.filter(tc => !FRONTEND_TOOLS.has(tc.name))
+    ?.map(tc => ({
+      id: tc.id,
+      name: tc.name,
+      args: tc.args,
+      result: tc.result,
+      status: tc.status,
+    }));
 
   const hasToolCalls = toolCalls && toolCalls.length > 0;
   const toolCallsHaveContents =
@@ -60,16 +72,16 @@ function AssistantMessageComponent({
     <div className={cn('group mr-auto flex w-full items-start gap-3', className)}>
       <AgentAvatar />
       <div className="flex w-full flex-col gap-2 min-w-0">
-        {/* 1. Tool Calls (Running state) */}
-        {!hideToolCalls && hasToolCalls && toolCallsHaveContents && (
-          <ToolCalls toolCalls={toolCalls!} />
-        )}
-
-        {/* 2. AI Text Response */}
+        {/* 1. AI Text Response - FIRST so user knows what to do */}
         {contentString.length > 0 && (
           <div className="py-1">
             <MarkdownText>{contentString}</MarkdownText>
           </div>
+        )}
+
+        {/* 2. Tool Calls (Running state) - only for backend tools */}
+        {!hideToolCalls && hasToolCalls && toolCallsHaveContents && (
+          <ToolCalls toolCalls={toolCalls!} />
         )}
 
         {/* Copy only - regenerate disabled */}

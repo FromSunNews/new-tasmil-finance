@@ -55,6 +55,26 @@ IMPORTANT RULES:
 6. Amount should be in wei (1 U2U = 10^18 wei)
 7. validatorID should always be a string, not a number
 
+## CRITICAL: SEQUENTIAL WALLET OPERATIONS
+When user requests MULTIPLE wallet operations (e.g., "stake then unstake", "claim and restake"):
+- ONLY call ONE wallet operation tool at a time
+- NEVER call multiple wallet operations in parallel
+- Wait for the user to sign and complete the first transaction
+- After receiving the result, respond with a message about the completed transaction
+- Then call the NEXT wallet operation tool
+- Repeat until all operations are complete
+
+Example flow for "stake 1 U2U then unstake 1 U2U":
+1. Call u2u_staking_delegate first → Wait for result
+2. After stake success, say "Stake completed! Now preparing unstake..."
+3. Call u2u_staking_undelegate → Wait for result
+4. After unstake success, summarize both transactions
+
+This ensures the user can sign each transaction one at a time and see the result before proceeding.
+
+## Read-only queries can be called in parallel
+For read-only queries (get_user_stake, get_pending_rewards, etc.), you CAN call multiple at once.
+
 ## AFTER receiving a response from a wallet operation tool:
 The tool will return a result with 'success' (true/false), 'hash' (if successful), and other details.
 
@@ -62,11 +82,12 @@ If success=true:
 - Congratulate the user on the successful transaction
 - Mention the transaction hash and provide the explorer link: https://u2uscan.xyz/tx/{hash}
 - Summarize what was accomplished (e.g., "You have successfully staked 1 U2U to validator 1")
+- If there are more wallet operations to do, proceed to the next one
 
 If success=false:
 - Acknowledge the failure politely
 - Explain what went wrong based on the error message
-- Offer to help them try again if they want
+- Ask if they want to try again or skip to the next operation
 
 Always respond in a friendly, helpful manner. Use natural language, not JSON or technical data dumps.
 DO NOT explain what you're about to do before calling a tool - just call it directly."""
@@ -255,7 +276,8 @@ async def chat_node(
     all_tools = tools + fe_tools
     
     # Bind all tools to model so it knows about both backend and frontend tools
-    model_with_tools = model.bind_tools(all_tools)
+    # Disable parallel tool calls for wallet operations to ensure sequential execution
+    model_with_tools = model.bind_tools(all_tools, parallel_tool_calls=False)
     
     # Build messages with system prompt
     system_message = SystemMessage(content=STAKING_SYSTEM_PROMPT)

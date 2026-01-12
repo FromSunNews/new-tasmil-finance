@@ -16,10 +16,13 @@ export interface CopilotToolCall {
 
 export interface CopilotMessage {
   id: string;
-  role: 'user' | 'assistant' | 'system';
+  role: 'user' | 'assistant' | 'system' | 'tool';
   content: string;
   toolCalls?: CopilotToolCall[];
   generativeUI?: ReactNode | (() => ReactNode);
+  // For tool result messages
+  toolCallId?: string;
+  toolName?: string;
 }
 
 export interface CopilotChatState {

@@ -1,7 +1,23 @@
 "use client";
 
-// 🪝 Main chat session orchestration hook
-// Using useCopilotChat for headless chat functionality
+/**
+ * 🪝 Chat Session Hook
+ * 
+ * Orchestrates chat functionality with CopilotKit and LangGraph.
+ * 
+ * Flow for new chat (/new → /{threadId}):
+ * 1. User sends message on /new
+ * 2. Create thread via LangGraph
+ * 3. Store message in PendingMessageProvider
+ * 4. Navigate to /{threadId}
+ * 5. Detect pending message, send via CopilotKit
+ * 6. Clear pending message
+ * 
+ * Flow for existing chat:
+ * 1. Load history from LangGraph
+ * 2. Display messages
+ * 3. Send new messages via CopilotKit
+ */
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useCopilotChat } from '@/features/chat-v2/hooks/use-copilot-chat';
@@ -15,33 +31,24 @@ interface UseChatSessionOptions {
   onNewThread?: (threadId: string) => void;
 }
 
-interface ChatSessionState {
-  messages: UniversalMessage[];
-  isLoading: boolean;
-  isLoadingHistory: boolean;
-  error: Error | null;
-}
-
-interface ChatSessionActions {
-  sendMessage: (content: string, attachments?: ContentBlock[]) => void;
-  regenerate: (messageId: string) => void;
-  editMessage: (messageId: string, newContent: string) => void;
-  stopGeneration: () => void;
-  clearMessages: () => void;
-}
-
-export function useChatSession(options: UseChatSessionOptions): ChatSessionState & ChatSessionActions {
+export function useChatSession(options: UseChatSessionOptions) {
   const { agentId, chatId, onNewThread } = options;
+  const isNewChat = chatId === 'new';
   
+  // Providers
   const { threadId, setThreadId } = useChatState();
-  const { pendingMessage, setPendingMessage } = usePendingMessage();
+  const { pendingMessage, setPendingMessage, clearPendingMessage } = usePendingMessage();
   const { createThread, isInitialized } = useLangGraph();
+  
+  // Local state
   const [error, setError] = useState<Error | null>(null);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-  const loadingHistoryRef = useRef(false);
-  const pendingMessageSentRef = useRef(false);
+  
+  // Refs to prevent duplicate operations
+  const hasSentPendingMessage = useRef(false);
+  const hasLoadedHistory = useRef(false);
 
-  // Use the headless chat hook
+  // CopilotKit hook
   const {
     messages: rawMessages,
     sendMessage: copilotSendMessage,
@@ -53,7 +60,6 @@ export function useChatSession(options: UseChatSessionOptions): ChatSessionState
   // Convert CopilotKit messages to Universal format
   const messages = useMemo<UniversalMessage[]>(() => {
     return rawMessages.map((msg) => {
-      // Extract tool calls from assistant messages
       const toolCalls: ToolCall[] = msg.toolCalls?.map((tc) => ({
         id: tc.id,
         name: tc.name ?? 'unknown',
@@ -62,85 +68,109 @@ export function useChatSession(options: UseChatSessionOptions): ChatSessionState
         status: tc.status ?? 'pending',
       })) || [];
 
+      // Determine role - tool messages should be treated as 'ai' for display purposes
+      const role = msg.role === "user" ? "human" as const : "ai" as const;
+
       return {
         id: msg.id,
-        role: msg.role === "user" ? "human" as const : "ai" as const,
+        role,
         content: msg.content || "",
         toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
         metadata: {
           generativeUI: msg.generativeUI,
           rawMessage: msg,
+          // Include tool result info for tool messages
+          ...(msg.role === 'tool' && {
+            isToolResult: true,
+            toolCallId: msg.toolCallId,
+            toolName: msg.toolName,
+          }),
         },
       };
     });
   }, [rawMessages]);
 
-  // Load message history when opening an existing thread
+  // Reset refs when chatId changes
   useEffect(() => {
-    let cancelled = false;
+    hasSentPendingMessage.current = false;
+    hasLoadedHistory.current = false;
     
-    async function loadHistory() {
-      // Skip if new chat
-      if (chatId === 'new') {
-        setIsLoadingHistory(false);
-        return;
-      }
+    // Clear messages and pending message when entering /new
+    if (isNewChat) {
+      copilotSetMessages([]);
+      clearPendingMessage();
+    }
+  }, [chatId, isNewChat, copilotSetMessages, clearPendingMessage]);
 
-      // Wait for client to be initialized
-      if (!isInitialized) {
-        console.log('[ChatSession] Client not initialized yet, waiting...');
-        return;
-      }
+  // Sync threadId with chatId
+  useEffect(() => {
+    if (!isNewChat && chatId !== threadId) {
+      setThreadId(chatId);
+    }
+  }, [chatId, isNewChat, threadId, setThreadId]);
 
-      // Skip if already loading
-      if (loadingHistoryRef.current) {
-        return;
-      }
-
-      loadingHistoryRef.current = true;
-      setIsLoadingHistory(true);
+  // Handle pending message after navigation to new thread
+  useEffect(() => {
+    if (
+      !isNewChat &&
+      pendingMessage &&
+      isInitialized &&
+      !hasSentPendingMessage.current
+    ) {
+      hasSentPendingMessage.current = true;
       
+      // Small delay to ensure CopilotKit is mounted
+      const timer = setTimeout(() => {
+        copilotSendMessage(pendingMessage);
+        clearPendingMessage();
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+    return undefined;
+  }, [chatId, isNewChat, pendingMessage, isInitialized, copilotSendMessage, clearPendingMessage]);
+
+  // Load history for existing threads (skip if we just created this thread)
+  useEffect(() => {
+    if (
+      isNewChat ||
+      !isInitialized ||
+      hasLoadedHistory.current ||
+      pendingMessage // Skip if we have pending message (just created thread)
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+    hasLoadedHistory.current = true;
+    setIsLoadingHistory(true);
+
+    async function loadHistory() {
       try {
-        console.log('[ChatSession] Loading history for thread:', chatId);
         const historyMessages = await historyService.getHistory(chatId);
-        
-        console.log('[ChatSession] Raw history messages:', historyMessages);
         
         if (cancelled) return;
         
         if (historyMessages.length > 0) {
-          // Convert UniversalMessage to CopilotKit format for setMessages
-          const copilotMessages = historyMessages.map(msg => {
-            const textContent = typeof msg.content === 'string' 
-              ? msg.content 
-              : '';
-            
-            console.log('[ChatSession] Converting message:', msg.role, '|', textContent.slice(0, 50));
-            
-            return {
-              id: msg.id,
-              role: msg.role === 'human' ? 'user' as const : 'assistant' as const,
-              content: textContent,
-              toolCalls: msg.toolCalls?.map(tc => ({
-                id: tc.id,
-                name: tc.name,
-                args: tc.args,
-                result: tc.result,
-                status: tc.status,
-              })),
-            };
-          });
+          const copilotMessages = historyMessages.map(msg => ({
+            id: msg.id,
+            role: msg.role === 'human' ? 'user' as const : 'assistant' as const,
+            content: typeof msg.content === 'string' ? msg.content : '',
+            toolCalls: msg.toolCalls?.map(tc => ({
+              id: tc.id,
+              name: tc.name,
+              args: tc.args,
+              result: tc.result,
+              status: tc.status,
+            })),
+          }));
           
-          console.log('[ChatSession] Setting messages via setMessages, count:', copilotMessages.length);
           copilotSetMessages(copilotMessages);
-        } else {
-          console.log('[ChatSession] No history found for thread:', chatId);
         }
       } catch (err) {
         console.error('[ChatSession] Failed to load history:', err);
       } finally {
         if (!cancelled) {
-          loadingHistoryRef.current = false;
           setIsLoadingHistory(false);
         }
       }
@@ -148,163 +178,68 @@ export function useChatSession(options: UseChatSessionOptions): ChatSessionState
 
     loadHistory();
     
-    return () => {
-      cancelled = true;
-    };
-  }, [chatId, isInitialized, copilotSetMessages]);
-
-  // Clear messages when chatId changes to a new chat
-  useEffect(() => {
-    if (chatId === 'new') {
-      copilotSetMessages([]);
-    }
-    loadingHistoryRef.current = false;
-  }, [chatId, copilotSetMessages]);
-
-  // Initialize thread for new chats
-  useEffect(() => {
-    if (chatId === 'new' && !threadId) {
-      // Will create thread on first message
-    } else if (chatId !== 'new' && chatId !== threadId) {
-      setThreadId(chatId);
-    }
-  }, [chatId, threadId, setThreadId]);
-
-  // Send pending message after redirect to new thread
-  useEffect(() => {
-    if (
-      chatId !== 'new' && 
-      pendingMessage && 
-      isInitialized && 
-      !pendingMessageSentRef.current
-    ) {
-      console.log('[ChatSession] Sending pending message after redirect:', pendingMessage.slice(0, 50));
-      pendingMessageSentRef.current = true;
-      
-      // Small delay to ensure CopilotKit is fully mounted
-      setTimeout(() => {
-        copilotSendMessage(pendingMessage);
-        setPendingMessage(null);
-      }, 100);
-    }
-  }, [chatId, pendingMessage, isInitialized, copilotSendMessage, setPendingMessage]);
-
-  // Reset pending message sent flag when chatId changes
-  useEffect(() => {
-    pendingMessageSentRef.current = false;
-  }, [chatId]);
+    return () => { cancelled = true; };
+  }, [chatId, isNewChat, isInitialized, pendingMessage, copilotSetMessages]);
 
   // Send message handler
-  const sendMessage = useCallback(async (
-    content: string,
-    _attachments?: ContentBlock[]
-  ): Promise<void> => {
+  const sendMessage = useCallback(async (content: string, _attachments?: ContentBlock[]) => {
     try {
       setError(null);
-      console.log('[ChatSession] Sending message:', content.slice(0, 50));
 
-      // Create thread if this is a new chat and LangGraph is initialized
-      if (chatId === 'new' && !threadId && isInitialized) {
-        console.log('[ChatSession] Creating new thread first...');
-        
+      // For new chat: create thread first, then redirect
+      if (isNewChat && isInitialized) {
         const newThread = await createThread({
-          metadata: {
-            agentId,
-            title: content.slice(0, 50),
-          },
+          metadata: { agentId, title: content.slice(0, 50) },
         });
         
         if (newThread) {
-          console.log('[ChatSession] Thread created:', newThread.id);
-          // Store pending message and redirect
           setPendingMessage(content);
           setThreadId(newThread.id);
           onNewThread?.(newThread.id);
-          return; // Message will be sent after redirect
+          return;
         }
       }
 
-      // Send message via CopilotKit (for existing threads)
-      console.log('[ChatSession] Sending via copilotSendMessage...');
+      // For existing thread: send directly
       copilotSendMessage(content);
-      
-      console.log('[ChatSession] Message sent successfully');
     } catch (err) {
-      console.error('[ChatSession] Error sending message:', err);
+      console.error('[ChatSession] Error:', err);
       setError(err instanceof Error ? err : new Error('Failed to send message'));
     }
-  }, [chatId, threadId, agentId, isInitialized, createThread, setThreadId, onNewThread, copilotSendMessage, setPendingMessage]);
-
-  // Stop generation
-  const stopGeneration = useCallback(() => {
-    copilotStopGeneration();
-  }, [copilotStopGeneration]);
+  }, [isNewChat, isInitialized, agentId, createThread, setPendingMessage, setThreadId, onNewThread, copilotSendMessage]);
 
   // Regenerate message
-  const regenerate = useCallback((messageId: string): void => {
-    try {
-      setError(null);
-      
-      const messageIndex = rawMessages.findIndex((m) => m.id === messageId);
-      if (messageIndex === -1) return;
+  const regenerate = useCallback((messageId: string) => {
+    const messageIndex = rawMessages.findIndex((m) => m.id === messageId);
+    if (messageIndex === -1) return;
 
-      const messagesBeforeAI = rawMessages.slice(0, messageIndex);
-      const lastUserMessage = [...messagesBeforeAI].reverse().find((m) => m.role === "user");
-      
-      if (!lastUserMessage) {
-        console.error("No user message found to regenerate from");
-        return;
-      }
+    const messagesBeforeAI = rawMessages.slice(0, messageIndex);
+    const lastUserMessage = [...messagesBeforeAI].reverse().find((m) => m.role === "user");
+    
+    if (!lastUserMessage) return;
 
-      // Set messages to before the AI response
-      copilotSetMessages(messagesBeforeAI);
-
-      // Re-send the last user message
-      setTimeout(() => {
-        copilotSendMessage(lastUserMessage.content);
-      }, 100);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to regenerate'));
-    }
+    copilotSetMessages(messagesBeforeAI);
+    setTimeout(() => copilotSendMessage(lastUserMessage.content), 100);
   }, [rawMessages, copilotSetMessages, copilotSendMessage]);
 
   // Edit message
-  const editMessage = useCallback((
-    messageId: string,
-    newContent: string
-  ): void => {
-    try {
-      setError(null);
+  const editMessage = useCallback((messageId: string, newContent: string) => {
+    const messageIndex = rawMessages.findIndex((m) => m.id === messageId);
+    if (messageIndex === -1) return;
 
-      const messageIndex = rawMessages.findIndex((m) => m.id === messageId);
-      if (messageIndex === -1) return;
-
-      const messagesBefore = rawMessages.slice(0, messageIndex);
-      copilotSetMessages(messagesBefore);
-
-      // Send the edited message
-      setTimeout(() => {
-        copilotSendMessage(newContent);
-      }, 100);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to edit message'));
-    }
+    copilotSetMessages(rawMessages.slice(0, messageIndex));
+    setTimeout(() => copilotSendMessage(newContent), 100);
   }, [rawMessages, copilotSetMessages, copilotSendMessage]);
-
-  // Clear messages
-  const clearMessages = useCallback(() => {
-    copilotSetMessages([]);
-  }, [copilotSetMessages]);
 
   return {
     messages,
     isLoading,
-    isLoadingHistory,
+    isLoadingHistory: isLoadingHistory && messages.length === 0,
     error,
     sendMessage,
     regenerate,
     editMessage,
-    stopGeneration,
-    clearMessages,
+    stopGeneration: copilotStopGeneration,
+    clearMessages: () => copilotSetMessages([]),
   };
 }

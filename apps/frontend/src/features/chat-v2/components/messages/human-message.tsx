@@ -2,7 +2,6 @@
 
 // 🎨 Human message component - matches old UI styling
 
-import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { CommandBar } from '@/features/chat/thread/messages/shared';
 import { MultimodalPreview } from '@/features/chat/thread/components/multimodal-preview';
@@ -23,15 +22,7 @@ export function HumanMessage({
   onEdit: _onEdit,
   className 
 }: HumanMessageProps) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState('');
   const contentString = getTextFromContent(message.content);
-
-  // Dummy handler - edit is disabled for now
-  const handleSubmitEdit = () => {
-    setIsEditing(false);
-    // _onEdit?.(editValue);
-  };
 
   return (
     <div
@@ -63,22 +54,16 @@ export function HumanMessage({
           ) : null}
         </div>
 
-        {/* CommandBar with required props for isHumanMessage */}
-        <div className="ml-auto flex items-center gap-2">
-          <CommandBar
-            isLoading={isLoading}
-            content={contentString}
-            isHumanMessage={true}
-            isEditing={isEditing}
-            setIsEditing={(editing) => {
-              if (editing) {
-                setEditValue(contentString);
-              }
-              setIsEditing(editing);
-            }}
-            handleSubmitEdit={handleSubmitEdit}
-          />
-        </div>
+        {/* Copy button - same style as AI message */}
+        {contentString && (
+          <div className="ml-auto flex items-center gap-2">
+            <CommandBar
+              content={contentString}
+              isLoading={isLoading}
+              isAiMessage={true}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

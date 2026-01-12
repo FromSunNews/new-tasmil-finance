@@ -96,12 +96,16 @@ export function MobileSidebarContent({ onClose }: { onClose?: () => void }) {
       </div>
 
       {/* Navigation */}
-      <div className="flex-1 overflow-auto px-3 py-4">
+      <div className="flex-1 overflow-y-auto overscroll-contain px-3 py-4">
         <nav className="space-y-2">
           {sidebarData.navGroups.map((group, groupIndex) => (
             <div key={groupIndex} className="space-y-2">
               {group.items.map((item) => {
-                const isActive = pathname === item.url || pathname.startsWith(`${item.url}/`);
+                // Check if active - also highlight Agents for /chat/* routes
+                const isActive = 
+                  pathname === item.url || 
+                  pathname.startsWith(`${item.url}/`) ||
+                  (item.url === "/agents" && pathname.startsWith("/chat/"));
                 return (
                   <Link
                     key={item.url}

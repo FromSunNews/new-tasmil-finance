@@ -56,12 +56,19 @@ export function useCopilotChat(): UseCopilotChatReturn {
         } satisfies CopilotToolCall;
       });
 
+      // Handle tool result messages
+      const isToolResult = msg.role === 'tool';
+      const toolCallId = msg.toolCallId;
+      const toolName = msg.toolName;
+
       return {
         id: msg.id,
         role: msg.role,
         content: msg.content ?? '',
         toolCalls,
         generativeUI: msg.generativeUI,
+        // Include tool result info for tool messages
+        ...(isToolResult && { toolCallId, toolName }),
       } satisfies CopilotMessage;
     });
   }, [rawMessages]);

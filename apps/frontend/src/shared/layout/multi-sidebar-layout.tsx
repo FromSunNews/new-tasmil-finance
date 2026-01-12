@@ -81,7 +81,7 @@ function MobileLayout({
   return (
     <div className="flex h-screen w-full flex-col overflow-hidden">
       {showHeader && <MobileHeader showRightSidebar={showRightSidebar} />}
-      <main className="flex-1 overflow-hidden">{children}</main>
+      <main className="flex-1 overflow-y-auto overscroll-contain">{children}</main>
 
       {/* Left sidebar sheet - no border, custom close button */}
       <Sheet open={leftSidebarOpen} onOpenChange={setLeftSidebarOpen}>

@@ -80,7 +80,7 @@ export default function AgentsPage() {
   };
 
   return (
-    <main className="min-h-screen bg-background">
+    <main className="h-full bg-background">
       <div className="container mx-auto px-4 md:px-6">
         <HeroSection agentCount={searchAssistants.data?.length || 0} />
 
