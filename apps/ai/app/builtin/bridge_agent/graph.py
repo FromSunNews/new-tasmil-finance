@@ -1,8 +1,8 @@
 """
-Bridge Agent - Cross-chain token bridging using Owlto Bridge.
+Bridge Agent - Cross-chain token bridging via MCP.
 
-This agent helps users bridge tokens between different blockchains,
-with a focus on U2U Network.
+This agent helps users bridge tokens between different blockchains
+by calling MCP tools.
 """
 
 import os
@@ -20,39 +20,38 @@ from langgraph.prebuilt import ToolNode
 from langgraph.types import Command
 from pydantic import BaseModel, Field
 from structlog import get_logger
-from typing import Optional
 from typing_extensions import Literal
 
 load_dotenv()
 
 logger = get_logger(__name__)
 
-# Owlto Bridge API
-OWLTO_API_BASE = "https://owlto.finance/api/v1"
+# MCP Server URL
+MCP_SERVER_URL = os.getenv("MCP_SERVER_URL", "http://localhost:3008/mcp")
 
 BRIDGE_SYSTEM_PROMPT = """You are a cross-chain bridge assistant for Owlto Bridge.
 
 ## CRITICAL RULE - ALWAYS USE TOOLS:
 You MUST call tools for ANY user question. NEVER respond with general knowledge.
-- User asks about bridges/routes → CALL get_bridge_pairs IMMEDIATELY
-- User asks about chains → CALL get_supported_chains IMMEDIATELY
-- User asks about fees/quote → CALL get_bridge_quote IMMEDIATELY
+- User asks about bridges/routes → CALL bridge_get_bridge_pairs IMMEDIATELY
+- User asks about chains → CALL bridge_get_supported_chains IMMEDIATELY
+- User asks about fees/quote → CALL bridge_get_bridge_quote IMMEDIATELY
 
 DO NOT explain what you're about to do. Just call the tool directly.
 
 ## Available Tools:
-1. get_bridge_pairs() - Get all available bridge routes
-2. get_bridge_quote(token_name, from_chain, to_chain, amount) - Get quote with fees
-3. get_supported_chains() - Get list of supported blockchains
+1. bridge_get_bridge_pairs() - Get all available bridge routes
+2. bridge_get_bridge_quote(tokenName, fromChain, toChain, amount) - Get quote with fees
+3. bridge_get_supported_chains() - Get list of supported blockchains
 
 ## Supported Chains:
 - U2USolarisMainnet, EthereumMainnet, BnbMainnet, ArbitrumOneMainnet
 - OptimismMainnet, PolygonMainnet, AvalancheMainnet, BaseMainnet, LineaMainnet
 
 ## Tool Selection:
-- "What can I bridge?" / "Available routes" → get_bridge_pairs()
-- "What chains?" / "Supported networks" → get_supported_chains()
-- "Bridge X from A to B" / "How much to bridge?" → get_bridge_quote(token, from, to, amount)
+- "What can I bridge?" / "Available routes" → bridge_get_bridge_pairs()
+- "What chains?" / "Supported networks" → bridge_get_supported_chains()
+- "Bridge X from A to B" / "How much to bridge?" → bridge_get_bridge_quote(token, from, to, amount)
 
 ## Rules:
 - Call tools IMMEDIATELY without explanation
@@ -67,6 +66,62 @@ class AgentState(CopilotKitState):
 
 
 # ============================================================================
+# MCP Tool Wrapper - Call MCP server via HTTP
+# ============================================================================
+
+def call_mcp_tool(tool_name: str, arguments: dict) -> str:
+    """Call an MCP tool via HTTP request using Streamable HTTP transport."""
+    try:
+        request_body = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/call",
+            "params": {
+                "name": tool_name,
+                "arguments": arguments
+            }
+        }
+        
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream",
+        }
+        
+        with httpx.Client(timeout=30.0) as client:
+            response = client.post(MCP_SERVER_URL, json=request_body, headers=headers)
+            response.raise_for_status()
+            
+            content_type = response.headers.get("content-type", "")
+            
+            if "text/event-stream" in content_type:
+                lines = response.text.strip().split("\n")
+                for line in lines:
+                    if line.startswith("data:"):
+                        data = line[5:].strip()
+                        if data:
+                            result = json.loads(data)
+                            if "result" in result:
+                                content = result.get("result", {}).get("content", [])
+                                if content and len(content) > 0:
+                                    return content[0].get("text", str(result))
+                return str(response.text)
+            else:
+                result = response.json()
+                
+                if "error" in result:
+                    return json.dumps({"success": False, "error": result['error']})
+                
+                content = result.get("result", {}).get("content", [])
+                if content and len(content) > 0:
+                    return content[0].get("text", str(result))
+                return str(result.get("result", result))
+            
+    except Exception as e:
+        logger.error("mcp_tool_call_failed", tool=tool_name, error=str(e))
+        return json.dumps({"success": False, "error": str(e)})
+
+
+# ============================================================================
 # Pydantic models for tool inputs
 # ============================================================================
 
@@ -75,9 +130,9 @@ class GetBridgePairsInput(BaseModel):
     pass
 
 class GetBridgeQuoteInput(BaseModel):
-    token_name: str = Field(description="Token symbol to bridge (e.g., 'USDT', 'USDC', 'U2U')")
-    from_chain: str = Field(description="Source chain name (e.g., 'EthereumMainnet', 'U2USolarisMainnet')")
-    to_chain: str = Field(description="Destination chain name")
+    tokenName: str = Field(description="Token symbol to bridge (e.g., 'USDT', 'USDC', 'U2U')")
+    fromChain: str = Field(description="Source chain name (e.g., 'EthereumMainnet', 'U2USolarisMainnet')")
+    toChain: str = Field(description="Destination chain name")
     amount: str = Field(description="Amount to bridge (e.g., '100', '1.5')")
 
 class GetSupportedChainsInput(BaseModel):
@@ -86,156 +141,30 @@ class GetSupportedChainsInput(BaseModel):
 
 
 # ============================================================================
-# Bridge Tools Implementation - Returns JSON for UI rendering
+# Create tools that call MCP server
 # ============================================================================
 
-DEFAULT_PROVIDER_URLS = {
-    "EthereumMainnet": "wss://ethereum-rpc.publicnode.com",
-    "U2USolarisMainnet": "https://rpc-mainnet.u2u.xyz",
-    "AvalancheMainnet": "wss://0xrpc.io/avax",
-    "BnbMainnet": "wss://bsc-rpc.publicnode.com",
-    "ArbitrumOneMainnet": "wss://arbitrum-one-rpc.publicnode.com",
-    "OptimismMainnet": "https://endpoints.omniatech.io/v1/op/mainnet/public",
-    "LineaMainnet": "https://linea.therpc.io",
-    "PolygonMainnet": "wss://polygon-bor-rpc.publicnode.com",
-    "BaseMainnet": "wss://base-rpc.publicnode.com",
-}
-
-
-def get_bridge_pairs() -> str:
-    """Get all available bridge pairs for cross-chain transfers."""
-    try:
-        logger.info("get_bridge_pairs called")
-        
-        # Return mock data for now - in production, call Owlto API
-        pairs = [
-            {
-                "tokenName": "USDT",
-                "fromChainName": "U2USolarisMainnet",
-                "toChainName": "EthereumMainnet",
-                "minValue": {"uiValue": "10 USDT", "value": "10"},
-                "maxValue": {"uiValue": "100,000 USDT", "value": "100000"},
-            },
-            {
-                "tokenName": "USDT",
-                "fromChainName": "EthereumMainnet",
-                "toChainName": "U2USolarisMainnet",
-                "minValue": {"uiValue": "10 USDT", "value": "10"},
-                "maxValue": {"uiValue": "100,000 USDT", "value": "100000"},
-            },
-            {
-                "tokenName": "USDC",
-                "fromChainName": "U2USolarisMainnet",
-                "toChainName": "BnbMainnet",
-                "minValue": {"uiValue": "10 USDC", "value": "10"},
-                "maxValue": {"uiValue": "100,000 USDC", "value": "100000"},
-            },
-            {
-                "tokenName": "U2U",
-                "fromChainName": "U2USolarisMainnet",
-                "toChainName": "EthereumMainnet",
-                "minValue": {"uiValue": "1 U2U", "value": "1"},
-                "maxValue": {"uiValue": "10,000 U2U", "value": "10000"},
-            },
-            {
-                "tokenName": "ETH",
-                "fromChainName": "EthereumMainnet",
-                "toChainName": "ArbitrumOneMainnet",
-                "minValue": {"uiValue": "0.01 ETH", "value": "0.01"},
-                "maxValue": {"uiValue": "100 ETH", "value": "100"},
-            },
-            {
-                "tokenName": "ETH",
-                "fromChainName": "ArbitrumOneMainnet",
-                "toChainName": "OptimismMainnet",
-                "minValue": {"uiValue": "0.01 ETH", "value": "0.01"},
-                "maxValue": {"uiValue": "100 ETH", "value": "100"},
-            },
-        ]
-        
-        return json.dumps({
-            "success": True,
-            "totalPairs": len(pairs),
-            "pairs": pairs
-        })
-        
-    except Exception as e:
-        logger.error("get_bridge_pairs_failed", error=str(e))
-        return json.dumps({"success": False, "error": str(e)})
-
-
-def get_bridge_quote(token_name: str, from_chain: str, to_chain: str, amount: str) -> str:
-    """Get a quote for bridging tokens between chains."""
-    try:
-        logger.info("get_bridge_quote called", token=token_name, from_chain=from_chain, to_chain=to_chain, amount=amount)
-        
-        amount_num = float(amount)
-        if amount_num <= 0:
-            return json.dumps({"success": False, "error": "Invalid amount. Please provide a valid amount greater than 0."})
-        
-        # Mock quote - in production, call Owlto API
-        estimated_fee = amount_num * 0.001  # 0.1% fee
-        
-        return json.dumps({
-            "success": True,
-            "quote": {
-                "tokenName": token_name,
-                "fromChain": from_chain,
-                "toChain": to_chain,
-                "amount": amount,
-                "amountFormatted": f"{amount} {token_name}",
-                "estimatedFee": estimated_fee,
-                "estimatedFeeFormatted": f"~{estimated_fee:.4f} {token_name}",
-                "estimatedTime": "~30 seconds",
-                "minAmount": "10",
-                "maxAmount": "100000",
-            }
-        })
-        
-    except Exception as e:
-        logger.error("get_bridge_quote_failed", error=str(e))
-        return json.dumps({"success": False, "error": str(e)})
-
-
-def get_supported_chains() -> str:
-    """Get list of supported chains for bridging."""
-    try:
-        logger.info("get_supported_chains called")
-        
-        chains = [
-            {"name": chain, "displayName": chain.replace("Mainnet", "").replace("Solaris", "")}
-            for chain in DEFAULT_PROVIDER_URLS.keys()
-        ]
-        
-        return json.dumps({
-            "success": True,
-            "totalChains": len(chains),
-            "chains": chains
-        })
-        
-    except Exception as e:
-        logger.error("get_supported_chains_failed", error=str(e))
-        return json.dumps({"success": False, "error": str(e)})
-
-
 def create_bridge_tools():
-    """Create bridge tools."""
+    """Create bridge tools that call MCP server via HTTP."""
     return [
         StructuredTool.from_function(
-            func=lambda: get_bridge_pairs(),
-            name="get_bridge_pairs",
+            func=lambda: call_mcp_tool("bridge_get_bridge_pairs", {}),
+            name="bridge_get_bridge_pairs",
             description="Get all available bridge pairs for cross-chain transfers. Use when users ask about available bridges or supported routes.",
             args_schema=GetBridgePairsInput,
         ),
         StructuredTool.from_function(
-            func=lambda token_name, from_chain, to_chain, amount: get_bridge_quote(token_name, from_chain, to_chain, amount),
-            name="get_bridge_quote",
+            func=lambda tokenName, fromChain, toChain, amount: call_mcp_tool(
+                "bridge_get_bridge_quote",
+                {"tokenName": tokenName, "fromChain": fromChain, "toChain": toChain, "amount": amount}
+            ),
+            name="bridge_get_bridge_quote",
             description="Get a quote for bridging tokens between chains. Shows estimated fees and amounts.",
             args_schema=GetBridgeQuoteInput,
         ),
         StructuredTool.from_function(
-            func=lambda: get_supported_chains(),
-            name="get_supported_chains",
+            func=lambda: call_mcp_tool("bridge_get_supported_chains", {}),
+            name="bridge_get_supported_chains",
             description="Get list of supported chains for bridging.",
             args_schema=GetSupportedChainsInput,
         ),
@@ -263,13 +192,11 @@ async def chat_node(
     """Chat node for bridge agent."""
     model = init_chat_model("gpt-4o-mini")
     
-    logger.info("bridge_chat_node_start", message_count=len(state.get("messages", [])))
+    logger.info("=== BRIDGE AGENT chat_node called ===", message_count=len(state.get("messages", [])))
     
-    # Get CopilotKit state
     copilotkit_state = state.get("copilotkit", {})
     fe_tools = copilotkit_state.get("actions", [])
     
-    # Get context from CopilotKit (includes wallet address from useCopilotReadable)
     context_items = copilotkit_state.get("context", [])
     context_str = ""
     if context_items:
@@ -285,9 +212,11 @@ async def chat_node(
         context_str = "\n".join(context_parts)
     
     all_tools = tools + fe_tools
+    
+    logger.info("bridge_agent_tools", backend_tools=[t.name for t in tools], frontend_tools=[t.get("name") for t in fe_tools])
+    
     model_with_tools = model.bind_tools(all_tools, parallel_tool_calls=False)
     
-    # Build system prompt with context
     system_content = BRIDGE_SYSTEM_PROMPT
     if context_str:
         system_content = f"{BRIDGE_SYSTEM_PROMPT}\n\n## CURRENT CONTEXT:\n{context_str}"

@@ -1,8 +1,8 @@
 """
-Yield Agent - DeFi yield farming opportunities using DeFiLlama.
+Yield Agent - DeFi yield farming opportunities via MCP.
 
 This agent helps users discover and analyze yield farming opportunities
-across multiple chains and protocols.
+across multiple chains and protocols by calling MCP tools.
 """
 
 import os
@@ -20,46 +20,41 @@ from langgraph.prebuilt import ToolNode
 from langgraph.types import Command
 from pydantic import BaseModel, Field
 from structlog import get_logger
-from typing import Optional, List
+from typing import Optional
 from typing_extensions import Literal
-import time
 
 load_dotenv()
 
 logger = get_logger(__name__)
 
-# DeFiLlama Yields API
-DEFILLAMA_YIELDS_API = "https://yields.llama.fi"
-
-# Cache for pools data
-pools_cache = {"data": None, "timestamp": 0}
-CACHE_TTL = 5 * 60  # 5 minutes
+# MCP Server URL
+MCP_SERVER_URL = os.getenv("MCP_SERVER_URL", "http://localhost:3008/mcp")
 
 YIELD_SYSTEM_PROMPT = """You are a DeFi yield farming assistant using DeFiLlama data.
 
 ## CRITICAL RULE - ALWAYS USE TOOLS:
 You MUST call tools for ANY user question. NEVER respond with general knowledge.
-- User asks about yields → CALL get_yield_pools or get_yield_stats IMMEDIATELY
-- User asks about specific chain → CALL get_top_yields_by_chain IMMEDIATELY
-- User asks about stablecoins → CALL get_stablecoin_yields IMMEDIATELY
-- User asks about specific token → CALL search_pools_by_token IMMEDIATELY
+- User asks about yields → CALL yield_get_yield_pools or yield_get_yield_stats IMMEDIATELY
+- User asks about specific chain → CALL yield_get_top_yields_by_chain IMMEDIATELY
+- User asks about stablecoins → CALL yield_get_stablecoin_yields IMMEDIATELY
+- User asks about specific token → CALL yield_search_pools_by_token IMMEDIATELY
 
 DO NOT explain what you're about to do. Just call the tool directly.
 
 ## Available Tools:
-1. get_yield_pools(chain, project, min_tvl, min_apy, stablecoin_only, limit) - Search yield pools
-2. get_top_yields_by_chain(chain, limit, min_tvl) - Top yields on a specific chain
-3. get_yield_history(pool_id) - Historical APY for a pool
-4. get_yield_stats(top_n) - Overall market statistics
-5. search_pools_by_token(token, limit, min_tvl) - Find pools for a token
-6. get_stablecoin_yields(chain, limit, min_tvl) - Safe stablecoin yields
+1. yield_get_yield_pools(chain, project, minTvl, minApy, stablecoinOnly, limit) - Search yield pools
+2. yield_get_top_yields_by_chain(chain, limit, minTvl) - Top yields on a specific chain
+3. yield_get_yield_history(poolId) - Historical APY for a pool
+4. yield_get_yield_stats(topN) - Overall market statistics
+5. yield_search_pools_by_token(token, limit, minTvl) - Find pools for a token
+6. yield_get_stablecoin_yields(chain, limit, minTvl) - Safe stablecoin yields
 
 ## Tool Selection:
-- "Best yields" / "Top APY" → get_yield_pools(limit=10)
-- "Yields on Ethereum/Arbitrum" → get_top_yields_by_chain("Ethereum")
-- "Stablecoin yields" / "Safe yields" → get_stablecoin_yields()
-- "ETH/USDC yields" → search_pools_by_token("ETH")
-- "Market overview" → get_yield_stats()
+- "Best yields" / "Top APY" → yield_get_yield_pools(limit=10)
+- "Yields on Ethereum/Arbitrum" → yield_get_top_yields_by_chain("Ethereum")
+- "Stablecoin yields" / "Safe yields" → yield_get_stablecoin_yields()
+- "ETH/USDC yields" → yield_search_pools_by_token("ETH")
+- "Market overview" → yield_get_yield_stats()
 
 ## Rules:
 - Call tools IMMEDIATELY without explanation
@@ -74,396 +69,147 @@ class AgentState(CopilotKitState):
 
 
 # ============================================================================
+# MCP Tool Wrapper - Call MCP server via HTTP
+# ============================================================================
+
+def call_mcp_tool(tool_name: str, arguments: dict) -> str:
+    """Call an MCP tool via HTTP request using Streamable HTTP transport."""
+    try:
+        request_body = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/call",
+            "params": {
+                "name": tool_name,
+                "arguments": arguments
+            }
+        }
+        
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream",
+        }
+        
+        with httpx.Client(timeout=30.0) as client:
+            response = client.post(MCP_SERVER_URL, json=request_body, headers=headers)
+            response.raise_for_status()
+            
+            content_type = response.headers.get("content-type", "")
+            
+            if "text/event-stream" in content_type:
+                lines = response.text.strip().split("\n")
+                for line in lines:
+                    if line.startswith("data:"):
+                        data = line[5:].strip()
+                        if data:
+                            result = json.loads(data)
+                            if "result" in result:
+                                content = result.get("result", {}).get("content", [])
+                                if content and len(content) > 0:
+                                    return content[0].get("text", str(result))
+                return str(response.text)
+            else:
+                result = response.json()
+                
+                if "error" in result:
+                    return json.dumps({"success": False, "error": result['error']})
+                
+                content = result.get("result", {}).get("content", [])
+                if content and len(content) > 0:
+                    return content[0].get("text", str(result))
+                return str(result.get("result", result))
+            
+    except Exception as e:
+        logger.error("mcp_tool_call_failed", tool=tool_name, error=str(e))
+        return json.dumps({"success": False, "error": str(e)})
+
+
+# ============================================================================
 # Pydantic models for tool inputs
 # ============================================================================
 
 class GetYieldPoolsInput(BaseModel):
     chain: Optional[str] = Field(default=None, description="Filter by blockchain (e.g., 'Ethereum', 'Arbitrum', 'BSC')")
     project: Optional[str] = Field(default=None, description="Filter by protocol (e.g., 'aave-v3', 'uniswap-v3')")
-    min_tvl: Optional[float] = Field(default=100000, description="Minimum TVL in USD")
-    min_apy: Optional[float] = Field(default=None, description="Minimum APY percentage")
-    stablecoin_only: Optional[bool] = Field(default=False, description="Only show stablecoin pools")
+    minTvl: Optional[float] = Field(default=100000, description="Minimum TVL in USD")
+    minApy: Optional[float] = Field(default=None, description="Minimum APY percentage")
+    stablecoinOnly: Optional[bool] = Field(default=False, description="Only show stablecoin pools")
     limit: int = Field(default=15, description="Number of pools to return (1-30)")
 
 class GetTopYieldsByChainInput(BaseModel):
     chain: str = Field(description="Blockchain name (e.g., 'Ethereum', 'Arbitrum', 'BSC')")
     limit: int = Field(default=10, description="Number of top pools to return")
-    min_tvl: Optional[float] = Field(default=50000, description="Minimum TVL in USD")
+    minTvl: Optional[float] = Field(default=50000, description="Minimum TVL in USD")
 
 class GetYieldHistoryInput(BaseModel):
-    pool_id: str = Field(description="The pool ID from DeFiLlama")
+    poolId: str = Field(description="The pool ID from DeFiLlama")
 
 class GetYieldStatsInput(BaseModel):
-    top_n: int = Field(default=10, description="Number of top chains to include")
+    topN: int = Field(default=10, description="Number of top chains to include")
 
 class SearchPoolsByTokenInput(BaseModel):
     token: str = Field(description="Token symbol to search for (e.g., 'ETH', 'USDC')")
     limit: int = Field(default=10, description="Number of pools to return")
-    min_tvl: Optional[float] = Field(default=50000, description="Minimum TVL in USD")
+    minTvl: Optional[float] = Field(default=50000, description="Minimum TVL in USD")
 
 class GetStablecoinYieldsInput(BaseModel):
     chain: Optional[str] = Field(default=None, description="Filter by blockchain")
     limit: int = Field(default=10, description="Number of pools to return")
-    min_tvl: Optional[float] = Field(default=100000, description="Minimum TVL in USD")
+    minTvl: Optional[float] = Field(default=100000, description="Minimum TVL in USD")
 
 
 # ============================================================================
-# Yield Tools Implementation - Returns JSON for UI rendering
+# Create tools that call MCP server
 # ============================================================================
-
-def fetch_pools_with_cache() -> list:
-    """Fetch pools with caching to reduce API calls."""
-    global pools_cache
-    now = time.time()
-    
-    if pools_cache["data"] and (now - pools_cache["timestamp"]) < CACHE_TTL:
-        logger.info("using_cached_pools_data")
-        return pools_cache["data"]
-    
-    logger.info("fetching_fresh_pools_data")
-    time.sleep(0.3)  # Rate limit protection
-    
-    with httpx.Client(timeout=30.0) as client:
-        response = client.get(
-            f"{DEFILLAMA_YIELDS_API}/pools",
-            headers={"Accept": "application/json"}
-        )
-        
-        if not response.is_success:
-            raise Exception("Failed to fetch yield pools")
-        
-        data = response.json()
-        pools_cache["data"] = data.get("data", [])
-        pools_cache["timestamp"] = now
-        
-        return pools_cache["data"]
-
-
-def get_yield_pools(
-    chain: Optional[str] = None,
-    project: Optional[str] = None,
-    min_tvl: float = 100000,
-    min_apy: Optional[float] = None,
-    stablecoin_only: bool = False,
-    limit: int = 15
-) -> str:
-    """Get yield farming pools with filtering."""
-    try:
-        logger.info("get_yield_pools called", chain=chain, project=project, min_tvl=min_tvl)
-        
-        pools = fetch_pools_with_cache()
-        
-        # Apply filters
-        if chain:
-            pools = [p for p in pools if p.get("chain", "").lower() == chain.lower()]
-        
-        if project:
-            pools = [p for p in pools if project.lower() in p.get("project", "").lower()]
-        
-        if min_tvl:
-            pools = [p for p in pools if (p.get("tvlUsd") or 0) >= min_tvl]
-        
-        if min_apy is not None:
-            pools = [p for p in pools if (p.get("apy") or 0) >= min_apy]
-        
-        if stablecoin_only:
-            pools = [p for p in pools if p.get("stablecoin") is True]
-        
-        # Sort by APY descending
-        pools.sort(key=lambda x: x.get("apy") or 0, reverse=True)
-        pools = pools[:min(limit, 30)]
-        
-        return json.dumps({
-            "success": True,
-            "totalPools": len(pools),
-            "pools": [
-                {
-                    "chain": p.get("chain"),
-                    "project": p.get("project"),
-                    "symbol": p.get("symbol"),
-                    "tvlUsd": p.get("tvlUsd"),
-                    "apy": p.get("apy"),
-                    "apyBase": p.get("apyBase"),
-                    "apyReward": p.get("apyReward"),
-                    "apyChange1D": p.get("apyPct1D"),
-                    "apyChange7D": p.get("apyPct7D"),
-                    "apyChange30D": p.get("apyPct30D"),
-                    "stablecoin": p.get("stablecoin"),
-                    "ilRisk": p.get("ilRisk"),
-                    "rewardTokens": p.get("rewardTokens"),
-                    "poolMeta": p.get("poolMeta"),
-                }
-                for p in pools
-            ]
-        })
-        
-    except Exception as e:
-        logger.error("get_yield_pools_failed", error=str(e))
-        return json.dumps({"success": False, "error": str(e)})
-
-
-def get_top_yields_by_chain(chain: str, limit: int = 10, min_tvl: float = 50000) -> str:
-    """Get top yield opportunities for a specific blockchain."""
-    try:
-        logger.info("get_top_yields_by_chain called", chain=chain, limit=limit)
-        
-        pools = fetch_pools_with_cache()
-        
-        # Filter by chain
-        pools = [p for p in pools if p.get("chain", "").lower() == chain.lower()]
-        
-        if min_tvl:
-            pools = [p for p in pools if (p.get("tvlUsd") or 0) >= min_tvl]
-        
-        # Sort by APY descending
-        pools.sort(key=lambda x: x.get("apy") or 0, reverse=True)
-        pools = pools[:min(limit, 15)]
-        
-        return json.dumps({
-            "success": True,
-            "chain": chain,
-            "totalPools": len(pools),
-            "pools": [
-                {
-                    "rank": i + 1,
-                    "project": p.get("project"),
-                    "symbol": p.get("symbol"),
-                    "tvlUsd": p.get("tvlUsd"),
-                    "apy": p.get("apy"),
-                    "apyBase": p.get("apyBase"),
-                    "apyReward": p.get("apyReward"),
-                    "stablecoin": p.get("stablecoin"),
-                    "ilRisk": p.get("ilRisk"),
-                    "rewardTokens": p.get("rewardTokens"),
-                }
-                for i, p in enumerate(pools)
-            ]
-        })
-        
-    except Exception as e:
-        logger.error("get_top_yields_by_chain_failed", error=str(e))
-        return json.dumps({"success": False, "error": str(e)})
-
-
-def get_yield_history(pool_id: str) -> str:
-    """Get historical APY data for a specific yield pool."""
-    try:
-        logger.info("get_yield_history called", pool_id=pool_id)
-        time.sleep(0.5)  # Rate limit
-        
-        with httpx.Client(timeout=30.0) as client:
-            response = client.get(
-                f"{DEFILLAMA_YIELDS_API}/chart/{pool_id}",
-                headers={"Accept": "application/json"}
-            )
-            
-            if not response.is_success:
-                return json.dumps({"success": False, "error": f"Failed to fetch history. Pool ID may be invalid: {pool_id}"})
-            
-            data = response.json()
-            history = data.get("data", [])[-30:]  # Last 30 data points
-            
-            return json.dumps({
-                "success": True,
-                "poolId": pool_id,
-                "dataPoints": len(history),
-                "history": [
-                    {
-                        "timestamp": h.get("timestamp"),
-                        "tvlUsd": h.get("tvlUsd"),
-                        "apy": h.get("apy"),
-                        "apyBase": h.get("apyBase"),
-                        "apyReward": h.get("apyReward"),
-                    }
-                    for h in history
-                ]
-            })
-            
-    except Exception as e:
-        logger.error("get_yield_history_failed", error=str(e))
-        return json.dumps({"success": False, "error": str(e)})
-
-
-def get_yield_stats(top_n: int = 10) -> str:
-    """Get overall yield statistics and summary across all chains."""
-    try:
-        logger.info("get_yield_stats called", top_n=top_n)
-        
-        pools = fetch_pools_with_cache()
-        
-        # Calculate stats by chain
-        chain_stats = {}
-        for p in pools:
-            chain = p.get("chain", "Unknown")
-            if chain not in chain_stats:
-                chain_stats[chain] = {"totalTvl": 0, "poolCount": 0, "totalApy": 0, "maxApy": 0}
-            
-            chain_stats[chain]["totalTvl"] += p.get("tvlUsd") or 0
-            chain_stats[chain]["poolCount"] += 1
-            chain_stats[chain]["totalApy"] += p.get("apy") or 0
-            chain_stats[chain]["maxApy"] = max(chain_stats[chain]["maxApy"], p.get("apy") or 0)
-        
-        # Sort by TVL and calculate averages
-        sorted_chains = sorted(
-            chain_stats.items(),
-            key=lambda x: x[1]["totalTvl"],
-            reverse=True
-        )[:top_n]
-        
-        # Overall stats
-        total_tvl = sum(p.get("tvlUsd") or 0 for p in pools)
-        total_pools = len(pools)
-        avg_apy = sum(p.get("apy") or 0 for p in pools) / total_pools if total_pools > 0 else 0
-        
-        return json.dumps({
-            "success": True,
-            "overview": {
-                "totalTvl": total_tvl,
-                "totalPools": total_pools,
-                "avgApy": avg_apy,
-                "chainsCount": len(chain_stats),
-            },
-            "topChains": [
-                {
-                    "chain": chain,
-                    "totalTvl": stats["totalTvl"],
-                    "poolCount": stats["poolCount"],
-                    "avgApy": stats["totalApy"] / stats["poolCount"] if stats["poolCount"] > 0 else 0,
-                    "maxApy": stats["maxApy"],
-                }
-                for chain, stats in sorted_chains
-            ]
-        })
-        
-    except Exception as e:
-        logger.error("get_yield_stats_failed", error=str(e))
-        return json.dumps({"success": False, "error": str(e)})
-
-
-def search_pools_by_token(token: str, limit: int = 10, min_tvl: float = 50000) -> str:
-    """Search yield pools by token symbol."""
-    try:
-        logger.info("search_pools_by_token called", token=token, limit=limit)
-        
-        pools = fetch_pools_with_cache()
-        
-        # Filter by token symbol
-        pools = [p for p in pools if token.upper() in p.get("symbol", "").upper()]
-        
-        if min_tvl:
-            pools = [p for p in pools if (p.get("tvlUsd") or 0) >= min_tvl]
-        
-        # Sort by APY descending
-        pools.sort(key=lambda x: x.get("apy") or 0, reverse=True)
-        pools = pools[:min(limit, 20)]
-        
-        return json.dumps({
-            "success": True,
-            "token": token.upper(),
-            "totalPools": len(pools),
-            "pools": [
-                {
-                    "chain": p.get("chain"),
-                    "project": p.get("project"),
-                    "symbol": p.get("symbol"),
-                    "tvlUsd": p.get("tvlUsd"),
-                    "apy": p.get("apy"),
-                    "apyBase": p.get("apyBase"),
-                    "apyReward": p.get("apyReward"),
-                    "stablecoin": p.get("stablecoin"),
-                    "ilRisk": p.get("ilRisk"),
-                    "poolId": p.get("pool"),
-                }
-                for p in pools
-            ]
-        })
-        
-    except Exception as e:
-        logger.error("search_pools_by_token_failed", error=str(e))
-        return json.dumps({"success": False, "error": str(e)})
-
-
-def get_stablecoin_yields(chain: Optional[str] = None, limit: int = 10, min_tvl: float = 100000) -> str:
-    """Get best stablecoin yield opportunities."""
-    try:
-        logger.info("get_stablecoin_yields called", chain=chain, limit=limit)
-        
-        pools = fetch_pools_with_cache()
-        
-        # Filter stablecoins only
-        pools = [p for p in pools if p.get("stablecoin") is True]
-        
-        if chain:
-            pools = [p for p in pools if p.get("chain", "").lower() == chain.lower()]
-        
-        if min_tvl:
-            pools = [p for p in pools if (p.get("tvlUsd") or 0) >= min_tvl]
-        
-        # Sort by APY descending
-        pools.sort(key=lambda x: x.get("apy") or 0, reverse=True)
-        pools = pools[:min(limit, 20)]
-        
-        return json.dumps({
-            "success": True,
-            "totalPools": len(pools),
-            "pools": [
-                {
-                    "rank": i + 1,
-                    "chain": p.get("chain"),
-                    "project": p.get("project"),
-                    "symbol": p.get("symbol"),
-                    "tvlUsd": p.get("tvlUsd"),
-                    "apy": p.get("apy"),
-                    "apyBase": p.get("apyBase"),
-                    "apyReward": p.get("apyReward"),
-                    "ilRisk": p.get("ilRisk"),
-                    "poolId": p.get("pool"),
-                }
-                for i, p in enumerate(pools)
-            ]
-        })
-        
-    except Exception as e:
-        logger.error("get_stablecoin_yields_failed", error=str(e))
-        return json.dumps({"success": False, "error": str(e)})
-
 
 def create_yield_tools():
-    """Create yield tools."""
+    """Create yield tools that call MCP server via HTTP."""
     return [
         StructuredTool.from_function(
-            func=lambda chain=None, project=None, min_tvl=100000, min_apy=None, stablecoin_only=False, limit=15: get_yield_pools(chain, project, min_tvl, min_apy, stablecoin_only, limit),
-            name="get_yield_pools",
+            func=lambda chain=None, project=None, minTvl=100000, minApy=None, stablecoinOnly=False, limit=15: call_mcp_tool(
+                "yield_get_yield_pools",
+                {k: v for k, v in {"chain": chain, "project": project, "minTvl": minTvl, "minApy": minApy, "stablecoinOnly": stablecoinOnly, "limit": limit}.items() if v is not None}
+            ),
+            name="yield_get_yield_pools",
             description="Get yield farming pools with filtering. Use for general yield searches.",
             args_schema=GetYieldPoolsInput,
         ),
         StructuredTool.from_function(
-            func=lambda chain, limit=10, min_tvl=50000: get_top_yields_by_chain(chain, limit, min_tvl),
-            name="get_top_yields_by_chain",
+            func=lambda chain, limit=10, minTvl=50000: call_mcp_tool(
+                "yield_get_top_yields_by_chain",
+                {"chain": chain, "limit": limit, "minTvl": minTvl}
+            ),
+            name="yield_get_top_yields_by_chain",
             description="Get top yield opportunities for a specific blockchain.",
             args_schema=GetTopYieldsByChainInput,
         ),
         StructuredTool.from_function(
-            func=lambda pool_id: get_yield_history(pool_id),
-            name="get_yield_history",
+            func=lambda poolId: call_mcp_tool("yield_get_yield_history", {"poolId": poolId}),
+            name="yield_get_yield_history",
             description="Get historical APY data for a specific yield pool.",
             args_schema=GetYieldHistoryInput,
         ),
         StructuredTool.from_function(
-            func=lambda top_n=10: get_yield_stats(top_n),
-            name="get_yield_stats",
+            func=lambda topN=10: call_mcp_tool("yield_get_yield_stats", {"topN": topN}),
+            name="yield_get_yield_stats",
             description="Get overall yield statistics and market overview.",
             args_schema=GetYieldStatsInput,
         ),
         StructuredTool.from_function(
-            func=lambda token, limit=10, min_tvl=50000: search_pools_by_token(token, limit, min_tvl),
-            name="search_pools_by_token",
+            func=lambda token, limit=10, minTvl=50000: call_mcp_tool(
+                "yield_search_pools_by_token",
+                {"token": token, "limit": limit, "minTvl": minTvl}
+            ),
+            name="yield_search_pools_by_token",
             description="Search yield pools by token symbol (e.g., ETH, USDC).",
             args_schema=SearchPoolsByTokenInput,
         ),
         StructuredTool.from_function(
-            func=lambda chain=None, limit=10, min_tvl=100000: get_stablecoin_yields(chain, limit, min_tvl),
-            name="get_stablecoin_yields",
+            func=lambda chain=None, limit=10, minTvl=100000: call_mcp_tool(
+                "yield_get_stablecoin_yields",
+                {k: v for k, v in {"chain": chain, "limit": limit, "minTvl": minTvl}.items() if v is not None}
+            ),
+            name="yield_get_stablecoin_yields",
             description="Get best stablecoin yield opportunities (low risk).",
             args_schema=GetStablecoinYieldsInput,
         ),
@@ -493,11 +239,9 @@ async def chat_node(
     
     logger.info("=== YIELD AGENT chat_node called ===", message_count=len(state.get("messages", [])))
     
-    # Get CopilotKit state
     copilotkit_state = state.get("copilotkit", {})
     fe_tools = copilotkit_state.get("actions", [])
     
-    # Get context from CopilotKit (includes wallet address from useCopilotReadable)
     context_items = copilotkit_state.get("context", [])
     context_str = ""
     if context_items:
@@ -518,7 +262,6 @@ async def chat_node(
     
     model_with_tools = model.bind_tools(all_tools, parallel_tool_calls=False)
     
-    # Build system prompt with context
     system_content = YIELD_SYSTEM_PROMPT
     if context_str:
         system_content = f"{YIELD_SYSTEM_PROMPT}\n\n## CURRENT CONTEXT:\n{context_str}"

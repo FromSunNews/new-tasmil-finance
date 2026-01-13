@@ -10,6 +10,9 @@ import { SUPPORTED_CHAINS } from "./chains.js";
 import { registerOwltoTools } from "./src/tools/owlto.js";
 import { registerU2UStakingTools } from "./src/tools/u2u-staking.js";
 import { registerInsightTools } from "./src/tools/insight.js";
+import { registerResearchTools } from "./src/tools/research.js";
+import { registerYieldTools } from "./src/tools/yield.js";
+import { registerBridgeTools } from "./src/tools/bridge.js";
 
 function getServer(){
 
@@ -24,6 +27,9 @@ function getServer(){
     registerOwltoTools(server);
     registerU2UStakingTools(server);
     registerInsightTools(server);
+    registerResearchTools(server);
+    registerYieldTools(server);
+    registerBridgeTools(server);
 
     // Helper function to get supported chain IDs list
     function getSupportedChainsList(): string {
